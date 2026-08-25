@@ -81,6 +81,20 @@ input {
   font-weight: 800;
   letter-spacing: -1px;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Layout-transparent wrapper: it exists to give GSAP something to stagger. */
+.welcome-step {
+  display: contents;
+}
+
+.ink-mark {
+  color: var(--accent);
+  flex-shrink: 0;
+  overflow: visible;
 }
 
 .logo-ink {
@@ -160,7 +174,10 @@ input {
 .join-btn {
   padding: 12px;
   background: transparent;
-  border: 2px solid;
+  /* Fallbacks: the inline style supplies the chosen colour, but without these
+     a lost inline style renders UA-default near-black text on a dark card. */
+  color: var(--text);
+  border: 2px solid var(--border-light);
   border-radius: var(--radius);
   font-size: 14px;
   font-weight: 700;
@@ -560,99 +577,112 @@ input {
 }
 
 /* ──────────────────────────────────────────
-   HOME PAGE
+   WELCOME — DESTINATION STEP
 ────────────────────────────────────────── */
 
-.home-page {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg);
-  background-image:
-    radial-gradient(ellipse 55% 40% at 25% 65%, rgba(108, 84, 245, 0.09) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 30% at 78% 30%, rgba(255, 110, 180, 0.06) 0%, transparent 55%);
-}
-
-.home-nav {
-  height: 52px;
-  padding: 0 24px;
+.welcome-identity {
+  margin-top: -14px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  gap: 8px;
+}
+
+.identity-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-.home-logo {
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--accent);
-  letter-spacing: -0.5px;
-}
-
-.home-user {
+.identity-name {
   font-size: 13px;
   font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.home-modes {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
-  padding: 40px;
-}
-
-.mode-card {
-  width: 340px;
-  padding: 40px 36px;
-  background: var(--surface);
+.identity-edit {
+  margin-left: auto;
+  background: transparent;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.12s;
+}
+
+.identity-edit:hover {
+  border-color: var(--border-light);
+  color: var(--text);
+}
+
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.choice-card {
+  width: 100%;
+  padding: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   text-align: left;
-  transition: border-color 0.2s, transform 0.15s;
+  transition: border-color 0.15s, transform 0.12s;
 }
 
-.canvas-card {
+.choice-card:not(.static) {
   cursor: pointer;
-  border-color: rgba(108, 84, 245, 0.25);
+  flex-direction: row;
+  align-items: flex-start;
 }
 
-.canvas-card:hover {
+.choice-card:not(.static):hover {
   border-color: var(--accent);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
-.mode-card h2 {
-  font-size: 20px;
+.choice-card.static.open {
+  border-color: var(--border-light);
+}
+
+.choice-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.choice-icon {
+  font-size: 18px;
+  color: var(--accent);
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.choice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.choice-title {
+  font-size: 14px;
   font-weight: 700;
   color: var(--text);
-  letter-spacing: -0.3px;
 }
 
-.mode-card p {
-  font-size: 13px;
+.choice-desc {
+  font-size: 12px;
   color: var(--text-muted);
-  line-height: 1.6;
-}
-
-.mode-icon {
-  font-size: 26px;
-  color: var(--accent);
-  line-height: 1;
-}
-
-.mode-tag {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--text-dim);
-  font-weight: 600;
+  line-height: 1.5;
 }
 
 .room-actions {
@@ -765,12 +795,22 @@ input {
   background: #ebebeb;
 }
 
+/* The drawing surface is larger than the viewport and slides under it. */
+.collab-surface {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
 .collab-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
+  touch-action: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18), 0 10px 40px rgba(0, 0, 0, 0.25);
 }
 
 /* Floating toolbar */
@@ -799,7 +839,18 @@ input {
   font-weight: 800;
   color: var(--accent);
   letter-spacing: -0.3px;
-  margin: 0 2px;
+  margin: 0 2px 0 0;
+}
+
+.canvas-full-card {
+  text-align: left;
+}
+
+.canvas-full-text {
+  margin-top: -14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
 }
 
 .collab-sep {
@@ -811,6 +862,7 @@ input {
 }
 
 .collab-ctrl-btn {
+  position: relative;
   width: 28px;
   height: 28px;
   background: transparent;
@@ -905,25 +957,101 @@ input {
 }
 
 /* Chat panel */
+/* Unread chat toasts — top right, under the toolbar, only while chat is shut. */
+.collab-toasts {
+  position: fixed;
+  top: 64px;
+  right: 18px;
+  z-index: 95;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 290px;
+}
+
+.collab-toast {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  background: rgba(13, 13, 20, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: border-color 0.12s;
+}
+
+.collab-toast:hover {
+  border-color: var(--border-light);
+}
+
+.toast-author {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.toast-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.collab-unread {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* A floating panel over the canvas rather than an edge drawer — toggled with M. */
 .collab-chat {
   position: fixed;
-  top: 0;
-  right: 0;
-  width: 300px;
-  height: 100vh;
+  right: 18px;
+  bottom: 18px;
+  width: 320px;
+  height: min(58vh, 440px);
   background: rgba(11, 11, 16, 0.92);
-  border-left: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   display: flex;
   flex-direction: column;
   z-index: 90;
-  transform: translateX(100%);
-  transition: transform 0.22s ease;
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .collab-chat.open {
-  transform: translateX(0);
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
 }
 
 .collab-chat-head {
@@ -934,6 +1062,17 @@ input {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.collab-kbd {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-dim);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 1px 5px;
+  line-height: 1.4;
 }
 
 .collab-chat-head > span:first-child {
@@ -967,27 +1106,60 @@ input {
   border-top: 1px solid var(--border);
 }
 
-/* Pin markers */
+/* Brush size preview — a true-to-size ring at the cursor while scrolling. */
+.brush-hint {
+  position: fixed;
+  translate: -50% -50%;
+  border: 1.5px solid;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  z-index: 90;
+}
+
+.brush-hint-label {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(13, 13, 20, 0.9);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pins only take the pointer under the select tool. With a drawing tool active
+   they are inert, so a stroke crossing one is never interrupted. */
+/* Positioning uses the standalone `translate`/`rotate` properties so GSAP can
+   own `transform` for its animations without clobbering the layout offset. */
 .pin-marker {
   position: absolute;
-  transform: translate(-50%, -100%);
+  translate: -50% -100%;
   z-index: 20;
   cursor: pointer;
+  pointer-events: none;
+}
+
+.collab-root.selecting .pin-marker {
+  pointer-events: auto;
 }
 
 .pin-dot {
   width: 14px;
   height: 14px;
   border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
+  rotate: -45deg;
   border: 2px solid rgba(255, 255, 255, 0.85);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-  transition: transform 0.15s;
+  transition: scale 0.15s;
 }
 
 .pin-marker:hover .pin-dot,
 .pin-marker.open .pin-dot {
-  transform: rotate(-45deg) scale(1.25);
+  scale: 1.25;
 }
 
 .pin-bubble {
@@ -1021,7 +1193,7 @@ input {
 
 .pin-input-card {
   position: absolute;
-  transform: translate(10px, -50%);
+  translate: 10px -50%;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;

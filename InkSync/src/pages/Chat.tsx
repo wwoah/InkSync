@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import gsap from 'gsap'
 import { io, Socket } from 'socket.io-client'
 import { DrawingCanvas } from '../components/DrawingCanvas'
 import { ChatFeed } from '../components/ChatFeed'
+import { prefersReducedMotion } from '../lib/motion'
 import type { User, Message } from '../types'
 
 interface Props {
@@ -15,6 +17,20 @@ export function Chat({ user, roomId, onLeave }: Props) {
   const [userCount, setUserCount] = useState(0)
   const [text, setText] = useState('')
   const socketRef = useRef<Socket | null>(null)
+  const pageRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (prefersReducedMotion()) return
+    const ctx = gsap.context(() => {
+      const rise = { y: 0, opacity: 1, duration: 0.45, ease: 'power3.out', clearProps: 'opacity,transform' }
+      gsap
+        .timeline()
+        .fromTo('.chat-header', { y: -52, opacity: 0 }, rise)
+        .fromTo('.canvas-section', { y: 18, opacity: 0 }, rise, '-=0.25')
+        .fromTo('.chat-section', { y: 18, opacity: 0 }, rise, '<')
+    }, pageRef)
+    return () => ctx.revert()
+  }, [])
 
   useEffect(() => {
     const socket = io('http://localhost:3001')
@@ -53,7 +69,7 @@ export function Chat({ user, roomId, onLeave }: Props) {
   }
 
   return (
-    <div className="chat-page">
+    <div className="chat-page" ref={pageRef}>
       <header className="chat-header">
         <div className="header-left">
           <button className="back-btn" onClick={onLeave}>←</button>

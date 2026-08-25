@@ -1,10 +1,13 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
+import { BrushHint } from './BrushHint'
+import { CursorIcon } from './icons'
+import { useBrushSize } from '../hooks/useBrushSize'
 
 interface Props {
   onSendDrawing: (dataUrl: string) => void
 }
 
-type Tool = 'pen' | 'eraser'
+type Tool = 'select' | 'pen' | 'eraser'
 
 const COLORS = [
   '#111111', '#ff4757', '#ff6b2b', '#ffd32a',
@@ -12,13 +15,23 @@ const COLORS = [
   '#ffffff', '#8395a7',
 ]
 
+const MIN_SIZE = 1
+const MAX_SIZE = 24
+
 export function DrawingCanvas({ onSendDrawing }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [tool, setTool] = useState<Tool>('pen')
   const [color, setColor] = useState('#111111')
-  const [size, setSize] = useState(5)
   const isDrawing = useRef(false)
   const lastPos = useRef({ x: 0, y: 0 })
+
+  const { size, setSize, hint } = useBrushSize({
+    initial: 5,
+    min: MIN_SIZE,
+    max: MAX_SIZE,
+    enabled: tool === 'pen' || tool === 'eraser',
+    canvasRef,
+  })
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -46,12 +59,17 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
     }
   }
 
-  const startDraw = useCallback((e: MouseEvent | TouchEvent) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    isDrawing.current = true
-    lastPos.current = getPos(e, canvas)
-  }, [])
+  const startDraw = useCallback(
+    (e: MouseEvent | TouchEvent) => {
+      if (tool === 'select') return
+      if ('button' in e && e.button !== 0) return
+      const canvas = canvasRef.current
+      if (!canvas) return
+      isDrawing.current = true
+      lastPos.current = getPos(e, canvas)
+    },
+    [tool]
+  )
 
   const draw = useCallback(
     (e: MouseEvent | TouchEvent) => {
@@ -83,22 +101,26 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    canvas.addEventListener('mousedown', startDraw)
-    canvas.addEventListener('mousemove', draw)
-    canvas.addEventListener('mouseup', stopDraw)
-    canvas.addEventListener('mouseleave', stopDraw)
-    canvas.addEventListener('touchstart', startDraw, { passive: true })
-    canvas.addEventListener('touchmove', draw, { passive: true })
-    canvas.addEventListener('touchend', stopDraw)
+    // The stroke starts on the canvas, but move/up live on the window so that
+    // drifting off the canvas mid-stroke doesn't cut the line short.
+    canvas.addEventListener('mousedown', startDraw as EventListener)
+    canvas.addEventListener('touchstart', startDraw as EventListener, { passive: true })
+    window.addEventListener('mousemove', draw as EventListener)
+    window.addEventListener('mouseup', stopDraw)
+    window.addEventListener('touchmove', draw as EventListener, { passive: true })
+    window.addEventListener('touchend', stopDraw)
+    window.addEventListener('touchcancel', stopDraw)
+    window.addEventListener('blur', stopDraw)
 
     return () => {
-      canvas.removeEventListener('mousedown', startDraw)
-      canvas.removeEventListener('mousemove', draw)
-      canvas.removeEventListener('mouseup', stopDraw)
-      canvas.removeEventListener('mouseleave', stopDraw)
-      canvas.removeEventListener('touchstart', startDraw)
-      canvas.removeEventListener('touchmove', draw)
-      canvas.removeEventListener('touchend', stopDraw)
+      canvas.removeEventListener('mousedown', startDraw as EventListener)
+      canvas.removeEventListener('touchstart', startDraw as EventListener)
+      window.removeEventListener('mousemove', draw as EventListener)
+      window.removeEventListener('mouseup', stopDraw)
+      window.removeEventListener('touchmove', draw as EventListener)
+      window.removeEventListener('touchend', stopDraw)
+      window.removeEventListener('touchcancel', stopDraw)
+      window.removeEventListener('blur', stopDraw)
     }
   }, [startDraw, draw, stopDraw])
 
@@ -126,11 +148,26 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
           width={1400}
           height={560}
           className="drawing-canvas"
+          style={{ cursor: tool === 'select' ? 'default' : 'crosshair' }}
         />
       </div>
 
+      <BrushHint
+        hint={hint}
+        width={tool === 'eraser' ? size * 5 : size}
+        label={size}
+        color={tool === 'eraser' ? '#8395a7' : color}
+      />
+
       <div className="toolbar">
         <div className="toolbar-tools">
+          <button
+            className={`tool-btn ${tool === 'select' ? 'active' : ''}`}
+            onClick={() => setTool('select')}
+            title="Select — pointer only, no drawing"
+          >
+            <CursorIcon size={14} />
+          </button>
           <button
             className={`tool-btn ${tool === 'pen' ? 'active' : ''}`}
             onClick={() => setTool('pen')}
@@ -157,7 +194,7 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
               style={{ background: c }}
               onClick={() => {
                 setColor(c)
-                setTool('pen')
+                if (tool !== 'pen' && tool !== 'eraser') setTool('pen')
               }}
               title={c}
             />
@@ -177,8 +214,8 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
           />
           <input
             type="range"
-            min={1}
-            max={24}
+            min={MIN_SIZE}
+            max={MAX_SIZE}
             value={size}
             onChange={(e) => setSize(Number(e.target.value))}
             className="size-slider"

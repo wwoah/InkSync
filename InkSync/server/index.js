@@ -17,6 +17,8 @@ function getRoom(roomId) {
 }
 
 // Collaborative canvas
+const CANVAS_CAPACITY = 5
+
 const canvas = {
   dataUrl: null,
   messages: [],
@@ -70,6 +72,13 @@ io.on('connection', (socket) => {
   // ── Collaborative Canvas ───────────────────────
 
   socket.on('join_canvas', ({ username, color }) => {
+    // The live canvas seats a fixed number of people; turn the rest away
+    // before they join the room, so they receive nothing further.
+    if (!canvas.users.has(socket.id) && canvas.users.size >= CANVAS_CAPACITY) {
+      socket.emit('canvas_full', { capacity: CANVAS_CAPACITY })
+      return
+    }
+
     canvas.users.set(socket.id, { username, color })
     socket.join('canvas')
     socket.data.canvasUser = { username, color }
@@ -78,6 +87,7 @@ io.on('connection', (socket) => {
       dataUrl: canvas.dataUrl,
       messages: canvas.messages.slice(-100),
       pins: canvas.pins,
+      capacity: CANVAS_CAPACITY,
     })
     io.to('canvas').emit('canvas_user_count', canvas.users.size)
 
@@ -92,6 +102,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('canvas_save', ({ dataUrl }) => {
+    if (!canvas.users.has(socket.id)) return
     canvas.dataUrl = dataUrl
   })
 

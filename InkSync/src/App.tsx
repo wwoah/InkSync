@@ -1,29 +1,23 @@
 import { useState } from 'react'
 import { Welcome } from './pages/Welcome'
-import { Home } from './pages/Home'
 import { Chat } from './pages/Chat'
 import { CollabCanvas } from './pages/CollabCanvas'
 import type { User } from './types'
 
 type View =
-  | { page: 'welcome' }
-  | { page: 'home'; user: User }
+  | { page: 'welcome'; user: User | null }
   | { page: 'room'; user: User; roomId: string }
   | { page: 'canvas'; user: User }
 
 function App() {
-  const [view, setView] = useState<View>({ page: 'welcome' })
+  const [view, setView] = useState<View>({ page: 'welcome', user: null })
 
   if (view.page === 'welcome') {
-    return <Welcome onJoin={(user) => setView({ page: 'home', user })} />
-  }
-
-  if (view.page === 'home') {
     return (
-      <Home
-        user={view.user}
-        onJoinRoom={(roomId) => setView({ page: 'room', user: view.user, roomId })}
-        onJoinCanvas={() => setView({ page: 'canvas', user: view.user })}
+      <Welcome
+        initialUser={view.user}
+        onEnterCanvas={(user) => setView({ page: 'canvas', user })}
+        onEnterRoom={(user, roomId) => setView({ page: 'room', user, roomId })}
       />
     )
   }
@@ -33,7 +27,7 @@ function App() {
       <Chat
         user={view.user}
         roomId={view.roomId}
-        onLeave={() => setView({ page: 'home', user: view.user })}
+        onLeave={() => setView({ page: 'welcome', user: view.user })}
       />
     )
   }
@@ -41,7 +35,7 @@ function App() {
   return (
     <CollabCanvas
       user={view.user}
-      onLeave={() => setView({ page: 'home', user: view.user })}
+      onLeave={() => setView({ page: 'welcome', user: view.user })}
     />
   )
 }
