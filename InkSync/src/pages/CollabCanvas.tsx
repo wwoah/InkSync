@@ -4,10 +4,13 @@ import gsap from 'gsap'
 import { io, Socket } from 'socket.io-client'
 import { ChatFeed } from '../components/ChatFeed'
 import { BrushHint } from '../components/BrushHint'
-import { CursorIcon } from '../components/icons'
+import { CursorIcon, FillIcon, InfoIcon } from '../components/icons'
 import { InkMark } from '../components/InkMark'
+import { InfoPanel } from '../components/InfoPanel'
 import { useBrushSize } from '../hooks/useBrushSize'
 import { prefersReducedMotion } from '../lib/motion'
+import { floodFill } from '../lib/fill'
+import { isTypingTarget } from '../lib/keys'
 import type { Message, User } from '../types'
 
 interface Pin {
@@ -27,9 +30,30 @@ interface DrawSegment {
   color: string
   size: number
   tool: string
+  strokeId?: string
+  kind?: undefined
 }
 
-type Tool = 'select' | 'pen' | 'eraser' | 'pin'
+interface FillOp {
+  kind: 'fill'
+  x: number
+  y: number
+  color: string
+  strokeId?: string
+}
+
+/** Anything replayable: the op log holds both, in the order they happened. */
+type CanvasOp = DrawSegment | FillOp
+
+interface RemoteCursor {
+  user: User
+  xPct: number
+  yPct: number
+  /** Last time we heard from them; stale cursors are pruned. */
+  t: number
+}
+
+type Tool = 'select' | 'pen' | 'eraser' | 'fill' | 'pin'
 
 const COLORS = [
   '#111111', '#ff4757', '#ff6b2b', '#ffd32a',
@@ -37,19 +61,59 @@ const COLORS = [
   '#ffffff', '#8395a7',
 ]
 
-const TOOLS: { id: Tool; icon: ReactNode; title: string }[] = [
-  { id: 'select', icon: <CursorIcon />, title: 'Select — drag to pan, click comments' },
-  { id: 'pen', icon: '✏', title: 'Pen' },
-  { id: 'eraser', icon: '⬜', title: 'Eraser' },
-  { id: 'pin', icon: '◎', title: 'Pin a comment' },
+const TOOLS: {
+  id: Tool
+  icon: ReactNode
+  name: string
+  key?: string
+  hint: string
+}[] = [
+  {
+    id: 'select',
+    icon: <CursorIcon />,
+    name: 'Select',
+    key: 'V',
+    hint: 'Drag to pan the canvas, and click pins to open or close their comments.',
+  },
+  { id: 'pen', icon: '✏', name: 'Pen', key: 'P', hint: 'Freehand strokes in the colour in hand.' },
+  {
+    id: 'eraser',
+    icon: '⬜',
+    name: 'Eraser',
+    key: 'E',
+    hint: 'Paints the canvas back to white, five times the brush width.',
+  },
+  {
+    id: 'fill',
+    icon: <FillIcon />,
+    name: 'Fill',
+    key: 'F',
+    hint: 'Floods the area you click, bleeding slightly into soft stroke edges.',
+  },
+  {
+    id: 'pin',
+    icon: '◎',
+    name: 'Pin',
+    hint: 'Click anywhere to leave a comment anchored to that spot.',
+  },
 ]
 
 const CURSORS: Record<Tool, string> = {
   select: 'grab',
   pen: 'crosshair',
   eraser: 'crosshair',
+  fill: 'crosshair',
   pin: 'cell',
 }
+
+/** Right-dragging paints with the secondary colour; white makes it an eraser. */
+const DEFAULT_ALT_COLOR = '#ffffff'
+
+const newStrokeId = () =>
+  globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(36).slice(2)}`
+
+/** The open canvas everyone shares; any other id is a private canvas code. */
+export const LIVE_CANVAS_ID = 'live'
 
 const MIN_SIZE = 1
 const MAX_SIZE = 30
@@ -57,10 +121,12 @@ const MAX_SIZE = 30
 /** The drawing surface is far larger than the viewport; you pan around it. */
 const SURFACE_W = 4096
 const SURFACE_H = 2304
-/** Snapshots are downscaled before upload — a full-size JPEG per stroke is huge. */
-const SNAPSHOT_W = 2048
 /** Pointer travel past which a select-drag counts as a pan, not a click. */
 const CLICK_SLOP = 4
+
+/** Cursor broadcast rate while drawing, and how long one lives unheard-from. */
+const CURSOR_EMIT_MS = 33
+const CURSOR_STALE_MS = 1500
 
 /** Unread chat toasts: how many stack up, and how long each one lingers. */
 const MAX_TOASTS = 3
@@ -84,16 +150,13 @@ function clientPoint(e: MouseEvent | TouchEvent) {
   return { x: e.clientX, y: e.clientY }
 }
 
-/** Full-size JPEGs of a 4096px canvas are megabytes; send a scaled copy instead. */
+/**
+ * Bakes are lossless and full-resolution: a joiner paints this at 1:1, so any
+ * downscaling or JPEG here is quality every future joiner would inherit.
+ * The server only asks for one once enough strokes have piled up.
+ */
 function snapshot(canvas: HTMLCanvasElement) {
-  if (canvas.width <= SNAPSHOT_W) return canvas.toDataURL('image/jpeg', 0.7)
-  const off = document.createElement('canvas')
-  off.width = SNAPSHOT_W
-  off.height = Math.round(canvas.height * (SNAPSHOT_W / canvas.width))
-  const ctx = off.getContext('2d')
-  if (!ctx) return canvas.toDataURL('image/jpeg', 0.7)
-  ctx.drawImage(canvas, 0, 0, off.width, off.height)
-  return off.toDataURL('image/jpeg', 0.7)
+  return canvas.toDataURL('image/png')
 }
 
 /** A pin pops in when it arrives, and its bubble springs open on click. */
@@ -215,10 +278,12 @@ function Toast({
 
 interface Props {
   user: User
+  canvasId: string
   onLeave: () => void
 }
 
-export function CollabCanvas({ user, onLeave }: Props) {
+export function CollabCanvas({ user, canvasId, onLeave }: Props) {
+  const isPrivate = canvasId !== LIVE_CANVAS_ID
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const surfaceRef = useRef<HTMLDivElement>(null)
   const chatInputRef = useRef<HTMLInputElement>(null)
@@ -228,9 +293,16 @@ export function CollabCanvas({ user, onLeave }: Props) {
   const isDrawing = useRef(false)
   const didDraw = useRef(false)
   const lastPos = useRef({ x: 0, y: 0 })
+  const lastCursorEmit = useRef(0)
+  // Fixed at mousedown: which colour this stroke paints with, and its id for undo.
+  const strokeColor = useRef(user.color)
+  const strokeId = useRef('')
+  /** Last baked image, kept decoded so an undo can repaint without a round trip. */
+  const baseline = useRef<HTMLImageElement | null>(null)
 
   const [tool, setTool] = useState<Tool>('pen')
   const [color, setColor] = useState(user.color)
+  const [altColor, setAltColor] = useState(DEFAULT_ALT_COLOR)
   const [messages, setMessages] = useState<Message[]>([])
   const [pins, setPins] = useState<Pin[]>([])
   const [userCount, setUserCount] = useState(0)
@@ -243,6 +315,8 @@ export function CollabCanvas({ user, onLeave }: Props) {
   const [unread, setUnread] = useState(0)
   const [capacity, setCapacity] = useState<number | null>(null)
   const [full, setFull] = useState<number | null>(null)
+  const [infoOpen, setInfoOpen] = useState(false)
+  const [cursors, setCursors] = useState<Record<string, RemoteCursor>>({})
 
   // The socket handlers are bound once, so they read the panel state off a ref.
   const chatOpenRef = useRef(chatOpen)
@@ -301,7 +375,12 @@ export function CollabCanvas({ user, onLeave }: Props) {
     ctx.fillRect(0, 0, canvas.width, canvas.height)
   }, [])
 
-  function applySegment(ctx: CanvasRenderingContext2D, seg: DrawSegment) {
+  function applyOp(ctx: CanvasRenderingContext2D, op: CanvasOp) {
+    if (op.kind === 'fill') {
+      floodFill(ctx, op.x, op.y, op.color)
+      return
+    }
+    const seg = op
     ctx.beginPath()
     ctx.moveTo(seg.x1, seg.y1)
     ctx.lineTo(seg.x2, seg.y2)
@@ -316,31 +395,84 @@ export function CollabCanvas({ user, onLeave }: Props) {
     const socket = io('http://localhost:3001')
     socketRef.current = socket
 
-    socket.on('connect', () => socket.emit('join_canvas', user))
+    socket.on('connect', () => socket.emit('join_canvas', { ...user, canvasId }))
 
     socket.on('canvas_full', ({ capacity: cap }: { capacity: number }) => setFull(cap))
 
-    socket.on('canvas_init', ({ dataUrl, messages: msgs, pins: initPins, capacity: cap }) => {
-      setCapacity(cap ?? null)
-      if (dataUrl) {
-        const canvas = canvasRef.current
-        if (!canvas) return
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        const img = new Image()
-        img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        img.src = dataUrl
+    // Repaint from the cached baseline, then replay every op still standing.
+    // Undo and redo both come back through here.
+    const render = (ops: CanvasOp[]) => {
+      const canvas = canvasRef.current
+      const ctx = canvas?.getContext('2d')
+      if (!canvas || !ctx) return
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      if (baseline.current) ctx.drawImage(baseline.current, 0, 0, canvas.width, canvas.height)
+      ops.forEach((op) => applyOp(ctx, op))
+    }
+
+    const setBaseline = (dataUrl: string | null, then?: () => void) => {
+      if (!dataUrl) {
+        baseline.current = null
+        then?.()
+        return
       }
-      setMessages(msgs ?? [])
-      setPins(initPins ?? [])
+      const img = new Image()
+      img.onload = () => {
+        baseline.current = img
+        then?.()
+      }
+      img.onerror = () => then?.()
+      img.src = dataUrl
+    }
+
+    socket.on(
+      'canvas_init',
+      ({ dataUrl, segments, messages: msgs, pins: initPins, capacity: cap }) => {
+        setCapacity(cap ?? null)
+        // Strokes drawn since the last bake are replayed on top of it, so a
+        // joiner ends up with exactly what everyone else has on screen.
+        setBaseline(dataUrl ?? null, () => render(segments ?? []))
+        setMessages(msgs ?? [])
+        setPins(initPins ?? [])
+      }
+    )
+
+    // Someone baked: adopt it as the baseline without repainting anything.
+    socket.on('canvas_baked', ({ dataUrl }: { dataUrl: string }) => setBaseline(dataUrl))
+
+    socket.on('canvas_rebuild', ({ ops }: { ops: CanvasOp[] }) => render(ops))
+
+    // The server asks for a fresh bake once replay gets long.
+    socket.on('canvas_bake', () => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const dataUrl = snapshot(canvas)
+      setBaseline(dataUrl)
+      socket.emit('canvas_save', { dataUrl })
+    })
+
+    socket.on('canvas_cursor', (c: RemoteCursor & { id: string }) => {
+      setCursors((prev) => ({ ...prev, [c.id]: { ...c, t: Date.now() } }))
+    })
+
+    socket.on('canvas_cursor_end', ({ id }: { id: string }) => {
+      setCursors((prev) => {
+        if (!(id in prev)) return prev
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
     })
 
     socket.on('canvas_draw', (seg: DrawSegment) => {
-      const canvas = canvasRef.current
-      if (!canvas) return
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-      applySegment(ctx, seg)
+      const ctx = canvasRef.current?.getContext('2d')
+      if (ctx) applyOp(ctx, seg)
+    })
+
+    socket.on('canvas_fill', (op: FillOp) => {
+      const ctx = canvasRef.current?.getContext('2d')
+      if (ctx) applyOp(ctx, op)
     })
 
     socket.on('canvas_pin', (pin: Pin) => setPins((p) => [...p, pin]))
@@ -359,7 +491,7 @@ export function CollabCanvas({ user, onLeave }: Props) {
     return () => {
       socket.disconnect()
     }
-  }, [user])
+  }, [user, canvasId])
 
   const getCanvasPos = (e: MouseEvent | TouchEvent, canvas: HTMLCanvasElement) => {
     // getBoundingClientRect already accounts for the pan transform.
@@ -384,7 +516,25 @@ export function CollabCanvas({ user, onLeave }: Props) {
         setPanning(true)
         return
       }
-      if (button !== 0) return
+      // Left paints the primary colour, right the secondary one.
+      if (button !== 0 && button !== 2) return
+      const paint = button === 2 ? altColor : color
+
+      if (tool === 'fill') {
+        const canvas = canvasRef.current
+        const ctx = canvas?.getContext('2d')
+        if (!canvas || !ctx) return
+        const pos = getCanvasPos(e, canvas)
+        if (!floodFill(ctx, pos.x, pos.y, paint)) return
+        socketRef.current?.emit('canvas_fill', {
+          kind: 'fill',
+          x: pos.x,
+          y: pos.y,
+          color: paint,
+          strokeId: newStrokeId(),
+        })
+        return
+      }
 
       if (tool === 'pin') {
         const surface = surfaceRef.current
@@ -402,9 +552,11 @@ export function CollabCanvas({ user, onLeave }: Props) {
       if (!canvas) return
       isDrawing.current = true
       didDraw.current = false
+      strokeColor.current = paint
+      strokeId.current = newStrokeId()
       lastPos.current = getCanvasPos(e, canvas)
     },
-    [tool]
+    [tool, color, altColor]
   )
 
   const handleMouseMove = useCallback(
@@ -428,16 +580,28 @@ export function CollabCanvas({ user, onLeave }: Props) {
         y1: lastPos.current.y,
         x2: pos.x,
         y2: pos.y,
-        color,
+        color: strokeColor.current,
         size,
         tool,
+        strokeId: strokeId.current,
       }
-      applySegment(ctx, seg)
+      applyOp(ctx, seg)
       socketRef.current?.emit('canvas_draw', seg)
       didDraw.current = true
       lastPos.current = pos
+
+      // Cursors ride along with the strokes, so they only ever show up for
+      // someone actively drawing — no idle pointers cluttering the canvas.
+      const now = performance.now()
+      if (now - lastCursorEmit.current >= CURSOR_EMIT_MS) {
+        lastCursorEmit.current = now
+        socketRef.current?.emit('canvas_cursor', {
+          xPct: (pos.x / SURFACE_W) * 100,
+          yPct: (pos.y / SURFACE_H) * 100,
+        })
+      }
     },
-    [applyPan, color, size, tool]
+    [applyPan, size, tool]
   )
 
   const handleMouseUp = useCallback(() => {
@@ -451,9 +615,7 @@ export function CollabCanvas({ user, onLeave }: Props) {
     }
     if (!isDrawing.current) return
     isDrawing.current = false
-    const canvas = canvasRef.current
-    if (!canvas || !didDraw.current) return
-    socketRef.current?.emit('canvas_save', { dataUrl: snapshot(canvas) })
+    if (didDraw.current) socketRef.current?.emit('canvas_cursor_end')
   }, [])
 
   useEffect(() => {
@@ -482,17 +644,41 @@ export function CollabCanvas({ user, onLeave }: Props) {
     }
   }, [handleMouseDown, handleMouseMove, handleMouseUp])
 
-  // 'm' toggles the chat panel, unless the caret is in a text field.
+  // Shortcuts. Every one of them stands down while the caret is in a text
+  // field, so typing "problem" in chat never swaps your tool.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'm' && e.key !== 'M') return
-      if (e.ctrlKey || e.metaKey || e.altKey) return
-      const t = e.target as HTMLElement | null
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+      if (isTypingTarget(e)) return
+      const key = e.key.toLowerCase()
+
+      if ((e.ctrlKey || e.metaKey) && key === 'z') {
+        e.preventDefault()
+        socketRef.current?.emit(e.shiftKey ? 'canvas_redo' : 'canvas_undo')
         return
       }
-      e.preventDefault()
-      toggleChat()
+      if ((e.ctrlKey || e.metaKey) && key === 'y') {
+        e.preventDefault()
+        socketRef.current?.emit('canvas_redo')
+        return
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+
+      const toolKeys: Record<string, Tool> = { p: 'pen', e: 'eraser', f: 'fill', v: 'select' }
+      if (toolKeys[key]) {
+        e.preventDefault()
+        setTool(toolKeys[key])
+        return
+      }
+      if (key === 'm') {
+        e.preventDefault()
+        toggleChat()
+        return
+      }
+      if (key === '?' || key === '/') {
+        e.preventDefault()
+        setInfoOpen((o) => !o)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -501,6 +687,19 @@ export function CollabCanvas({ user, onLeave }: Props) {
   useEffect(() => {
     if (chatOpen) chatInputRef.current?.focus()
   }, [chatOpen])
+
+  // A safety net for cursors whose owner went quiet without a clean end.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCursors((prev) => {
+        const cutoff = Date.now() - CURSOR_STALE_MS
+        const live = Object.entries(prev).filter(([, c]) => c.t > cutoff)
+        if (live.length === Object.keys(prev).length) return prev
+        return Object.fromEntries(live)
+      })
+    }, 500)
+    return () => clearInterval(timer)
+  }, [])
 
   // The toolbar drops in once the canvas is up.
   useEffect(() => {
@@ -546,14 +745,16 @@ export function CollabCanvas({ user, onLeave }: Props) {
       <div className="welcome-page">
         <div className="welcome-card canvas-full-card" ref={fullCardRef}>
           <div className="welcome-logo">
-            <InkMark size={30} />
+            <InkMark size={64} />
             <span className="logo-ink">Ink</span>
             <span className="logo-sync">Sync</span>
           </div>
-          <p className="welcome-sub">the live canvas is full</p>
+          <p className="welcome-sub">
+            {isPrivate ? `canvas ${canvasId} is full` : 'the live canvas is full'}
+          </p>
           <p className="canvas-full-text">
             All {full} spots are taken right now. Hang back a moment and try again, or
-            start a private room instead.
+            {isPrivate ? ' start a canvas of your own' : ' make a private canvas instead'}.
           </p>
           <button className="join-btn" onClick={onLeave} style={{ borderColor: user.color, color: user.color }}>
             Back
@@ -568,6 +769,7 @@ export function CollabCanvas({ user, onLeave }: Props) {
       className={`collab-root ${tool === 'select' ? 'selecting' : ''} ${
         panning ? 'panning' : ''
       }`}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <div
         className="collab-surface"
@@ -594,6 +796,20 @@ export function CollabCanvas({ user, onLeave }: Props) {
             open={activePin === pin.id}
             onToggle={() => setActivePin(activePin === pin.id ? null : pin.id)}
           />
+        ))}
+
+        {/* Live cursors — present only while their owner is drawing */}
+        {Object.entries(cursors).map(([id, c]) => (
+          <div
+            key={id}
+            className="remote-cursor"
+            style={{ left: `${c.xPct}%`, top: `${c.yPct}%`, color: c.user.color }}
+          >
+            <CursorIcon size={18} />
+            <span className="remote-cursor-name" style={{ background: c.user.color }}>
+              {c.user.username}
+            </span>
+          </div>
         ))}
 
         {/* Pending pin input */}
@@ -652,8 +868,9 @@ export function CollabCanvas({ user, onLeave }: Props) {
         <button className="collab-ctrl-btn" onClick={onLeave} title="Back">
           ←
         </button>
-        <InkMark size={16} />
+        <InkMark size={34} />
         <span className="collab-logo">InkSync</span>
+        {isPrivate && <span className="collab-code">/ {canvasId}</span>}
 
         <div className="collab-sep" />
 
@@ -662,23 +879,50 @@ export function CollabCanvas({ user, onLeave }: Props) {
             key={t.id}
             className={`collab-tool-btn ${tool === t.id ? 'active' : ''}`}
             onClick={() => setTool(t.id)}
-            title={t.title}
+            title={t.key ? `${t.name} (${t.key})` : t.name}
           >
             {t.icon}
           </button>
         ))}
 
+        <button
+          className={`collab-ctrl-btn ${infoOpen ? 'hi' : ''}`}
+          onClick={() => setInfoOpen((o) => !o)}
+          title="Tools & shortcuts (?)"
+        >
+          <InfoIcon />
+        </button>
+
         <div className="collab-sep" />
+
+        <button
+          className="collab-duo"
+          onClick={() => {
+            setColor(altColor)
+            setAltColor(color)
+          }}
+          title="Left draws the front colour, right-drag draws the back one — click to swap"
+        >
+          <span className="collab-duo-alt" style={{ background: altColor }} />
+          <span className="collab-duo-main" style={{ background: color }} />
+        </button>
 
         <div className="collab-swatches">
           {COLORS.map((c) => (
             <button
               key={c}
-              className={`collab-swatch ${c === color ? 'sel' : ''}`}
+              className={`collab-swatch ${c === color ? 'sel' : ''} ${
+                c === altColor ? 'alt' : ''
+              }`}
               style={{ background: c }}
+              title={`${c} — right-click to set as the second colour`}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setAltColor(c)
+              }}
               onClick={() => {
                 setColor(c)
-                if (tool !== 'pen' && tool !== 'eraser') setTool('pen')
+                if (tool !== 'pen' && tool !== 'eraser' && tool !== 'fill') setTool('pen')
               }}
             />
           ))}
@@ -693,6 +937,7 @@ export function CollabCanvas({ user, onLeave }: Props) {
               width: Math.max(size * 0.8, 3),
               height: Math.max(size * 0.8, 3),
               background: tool === 'eraser' ? '#888' : color,
+              boxShadow: `0 0 0 2px ${altColor}44`,
             }}
           />
           <input
@@ -723,6 +968,8 @@ export function CollabCanvas({ user, onLeave }: Props) {
           )}
         </button>
       </div>
+
+      <InfoPanel open={infoOpen} onClose={() => setInfoOpen(false)} tools={TOOLS} />
 
       {/* Floating chat panel */}
       <div className={`collab-chat ${chatOpen ? 'open' : ''}`}>

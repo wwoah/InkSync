@@ -75,3 +75,4 @@ export default defineConfig([
 ])
 
 ```
+Credit to Vicons Design GB for favicon icon

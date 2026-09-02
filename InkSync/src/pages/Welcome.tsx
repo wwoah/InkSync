@@ -6,7 +6,7 @@ import type { User } from '../types'
 
 interface Props {
   initialUser?: User | null
-  onEnterCanvas: (user: User) => void
+  onEnterCanvas: (user: User, canvasId?: string) => void
   onEnterRoom: (user: User, roomId: string) => void
 }
 
@@ -19,15 +19,166 @@ function randomCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase()
 }
 
+/**
+ * A destination card. Everything here is reached with a share code, except the
+ * optional `onEnterOpen` — a public instance that needs none. Cards offering
+ * both hide their options behind one button rather than fanning out three
+ * choices the moment the step appears.
+ */
+function ChoiceCard({
+  icon,
+  title,
+  desc,
+  noun,
+  openLabel,
+  onEnterOpen,
+  onEnterCode,
+}: {
+  icon: string
+  title: string
+  desc: string
+  /** Used in the buttons: "Create Room", "Join Canvas", and so on. */
+  noun: string
+  openLabel?: string
+  onEnterOpen?: () => void
+  onEnterCode: (code: string) => void
+}) {
+  const gated = Boolean(onEnterOpen)
+  const [mode, setMode] = useState<'idle' | 'menu' | 'create' | 'join'>('idle')
+  const [code, setCode] = useState('')
+
+  const enter = (c: string) => {
+    const id = c.trim().toUpperCase()
+    if (id) onEnterCode(id)
+  }
+
+  const startCreate = () => {
+    setCode(randomCode())
+    setMode('create')
+  }
+
+  const startJoin = () => {
+    setCode('')
+    setMode('join')
+  }
+
+  /** Back lands on the menu for gated cards, and closes the card otherwise. */
+  const back = () => setMode(gated ? 'menu' : 'idle')
+
+  return (
+    <div className={`choice-card static ${mode !== 'idle' ? 'open' : ''}`}>
+      <div className="choice-head">
+        <span className="choice-icon">{icon}</span>
+        <span className="choice-body">
+          <span className="choice-title">{title}</span>
+          <span className="choice-desc">{desc}</span>
+        </span>
+      </div>
+
+      {mode === 'idle' && (
+        <div className="room-actions">
+          {gated ? (
+            <button className="room-btn primary" onClick={() => setMode('menu')}>
+              Join {noun}
+            </button>
+          ) : (
+            <>
+              <button className="room-btn primary" onClick={startCreate}>
+                Create {noun}
+              </button>
+              <button className="room-btn" onClick={startJoin}>
+                Join {noun}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {mode === 'menu' && (
+        <>
+          <div className="room-group">
+            <span className="room-code-label">open to everyone</span>
+            <div className="room-actions">
+              <button className="room-btn primary" onClick={onEnterOpen}>
+                {openLabel}
+              </button>
+            </div>
+          </div>
+          <div className="room-group">
+            <span className="room-code-label">or private, with a code</span>
+            <div className="room-actions">
+              <button className="room-btn" onClick={startCreate}>
+                Create Private
+              </button>
+              <button className="room-btn" onClick={startJoin}>
+                Join Private
+              </button>
+            </div>
+          </div>
+          <button className="room-btn" onClick={() => setMode('idle')}>
+            Back
+          </button>
+        </>
+      )}
+
+      {mode === 'create' && (
+        <>
+          <div className="room-code-display">
+            <span className="room-code-label">Share this code</span>
+            <span className="room-code">{code}</span>
+          </div>
+          <div className="room-actions">
+            <button className="room-btn primary" onClick={() => enter(code)}>
+              Enter {noun}
+            </button>
+            <button className="room-btn" onClick={back}>
+              Back
+            </button>
+          </div>
+        </>
+      )}
+
+      {mode === 'join' && (
+        <>
+          <input
+            className="room-input"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === 'Enter' && enter(code)}
+            placeholder="ENTER CODE"
+            autoFocus
+            maxLength={10}
+          />
+          <div className="room-actions">
+            <button
+              className="room-btn primary"
+              disabled={!code.trim()}
+              onClick={() => enter(code)}
+            >
+              Join
+            </button>
+            <button
+              className="room-btn"
+              onClick={() => {
+                setCode('')
+                back()
+              }}
+            >
+              Back
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export function Welcome({ initialUser, onEnterCanvas, onEnterRoom }: Props) {
   const [step, setStep] = useState<'identity' | 'destination'>(
     initialUser ? 'destination' : 'identity',
   )
   const [username, setUsername] = useState(initialUser?.username ?? '')
   const [color, setColor] = useState(initialUser?.color ?? COLOR_OPTIONS[4])
-  const [roomMode, setRoomMode] = useState<'idle' | 'create' | 'join'>('idle')
-  const [code, setCode] = useState('')
-
   const cardRef = useRef<HTMLDivElement>(null)
   const stepRef = useRef<HTMLDivElement>(null)
 
@@ -74,17 +225,11 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom }: Props) {
     setStep('destination')
   }
 
-  const enterRoom = (roomId: string) => {
-    const id = roomId.trim().toUpperCase()
-    if (!id) return
-    onEnterRoom(user, id)
-  }
-
   return (
     <div className="welcome-page">
       <div className="welcome-card" ref={cardRef}>
         <div className="welcome-logo">
-          <InkMark size={30} />
+          <InkMark size={64} />
           <span className="logo-ink">Ink</span>
           <span className="logo-sync">Sync</span>
         </div>
@@ -136,11 +281,7 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom }: Props) {
               <span className="identity-name" style={{ color }}>{trimmed}</span>
               <button
                 className="identity-edit"
-                onClick={() => {
-                  setRoomMode('idle')
-                  setCode('')
-                  setStep('identity')
-                }}
+                onClick={() => setStep('identity')}
               >
                 edit
               </button>
@@ -150,104 +291,23 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom }: Props) {
               <label className="field-label">where to?</label>
 
               <div className="choice-list">
-                {/* Live Canvas */}
-                <button
-                  className="choice-card"
-                  onClick={() => onEnterCanvas(user)}
-                >
-                  <span className="choice-icon">◈</span>
-                  <span className="choice-body">
-                    <span className="choice-title">Live Canvas</span>
-                    <span className="choice-desc">
-                      Draw with everyone in real time on one shared canvas.
-                    </span>
-                  </span>
-                </button>
+                <ChoiceCard
+                  icon="◈"
+                  title="Canvas"
+                  desc="One big shared surface — draw together, pin comments, chat."
+                  noun="Canvas"
+                  openLabel="Live Canvas"
+                  onEnterOpen={() => onEnterCanvas(user)}
+                  onEnterCode={(id) => onEnterCanvas(user, id)}
+                />
 
-                {/* Private Room */}
-                <div className={`choice-card static ${roomMode !== 'idle' ? 'open' : ''}`}>
-                  <div className="choice-head">
-                    <span className="choice-icon">◇</span>
-                    <span className="choice-body">
-                      <span className="choice-title">Private Room</span>
-                      <span className="choice-desc">
-                        Draw and chat in a private space with a room code.
-                      </span>
-                    </span>
-                  </div>
-
-                  {roomMode === 'idle' && (
-                    <div className="room-actions">
-                      <button
-                        className="room-btn primary"
-                        onClick={() => {
-                          setCode(randomCode())
-                          setRoomMode('create')
-                        }}
-                      >
-                        Create Room
-                      </button>
-                      <button
-                        className="room-btn"
-                        onClick={() => {
-                          setCode('')
-                          setRoomMode('join')
-                        }}
-                      >
-                        Join Room
-                      </button>
-                    </div>
-                  )}
-
-                  {roomMode === 'create' && (
-                    <>
-                      <div className="room-code-display">
-                        <span className="room-code-label">Share this code</span>
-                        <span className="room-code">{code}</span>
-                      </div>
-                      <div className="room-actions">
-                        <button className="room-btn primary" onClick={() => enterRoom(code)}>
-                          Enter Room
-                        </button>
-                        <button className="room-btn" onClick={() => setRoomMode('idle')}>
-                          Back
-                        </button>
-                      </div>
-                    </>
-                  )}
-
-                  {roomMode === 'join' && (
-                    <>
-                      <input
-                        className="room-input"
-                        value={code}
-                        onChange={(e) => setCode(e.target.value.toUpperCase())}
-                        onKeyDown={(e) => e.key === 'Enter' && enterRoom(code)}
-                        placeholder="ENTER CODE"
-                        autoFocus
-                        maxLength={10}
-                      />
-                      <div className="room-actions">
-                        <button
-                          className="room-btn primary"
-                          disabled={!code.trim()}
-                          onClick={() => enterRoom(code)}
-                        >
-                          Join
-                        </button>
-                        <button
-                          className="room-btn"
-                          onClick={() => {
-                            setCode('')
-                            setRoomMode('idle')
-                          }}
-                        >
-                          Back
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
+                <ChoiceCard
+                  icon="◇"
+                  title="Private Room"
+                  desc="Draw and chat in a private space with a room code."
+                  noun="Room"
+                  onEnterCode={(id) => onEnterRoom(user, id)}
+                />
               </div>
             </div>
           </>

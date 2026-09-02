@@ -58,6 +58,10 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Three destinations make a tall card; let it scroll on short screens
+     rather than clipping against the page's hidden overflow. */
+  padding: 24px 16px;
+  overflow-y: auto;
   background: var(--bg);
   background-image:
     radial-gradient(ellipse 60% 50% at 30% 60%, rgba(108, 84, 245, 0.12) 0%, transparent 70%),
@@ -66,6 +70,8 @@ input {
 
 .welcome-card {
   width: 380px;
+  flex-shrink: 0;
+  margin: auto;
   padding: 44px 40px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -91,10 +97,81 @@ input {
   display: contents;
 }
 
+/* The logo animates itself — no script drives it.
+   The artwork is a single raster, so the pens and the blot are split here with
+   radial masks. The radii come from a radial ink-coverage scan of the file:
+   the only ring carrying no ink at all sits at 46.5%-47.5% of the SVG's padded
+   canvas, so the cut goes exactly there. Widening it clips the pen nibs.
+   Those radii are scaled by --ink-art-scale alongside the artwork itself, so
+   enlarging the logo never moves the cut off that empty ring. */
 .ink-mark {
+  position: relative;
+  display: inline-block;
   color: var(--accent);
   flex-shrink: 0;
-  overflow: visible;
+}
+
+.ink-mark-pens,
+.ink-mark-blot {
+  position: absolute;
+  inset: 0;
+}
+
+.ink-mark-pens {
+  -webkit-mask-image: radial-gradient(
+    circle closest-side,
+    transparent 0 calc(46.5% * var(--ink-art-scale, 1)),
+    #000 calc(47.5% * var(--ink-art-scale, 1))
+  );
+  mask-image: radial-gradient(
+    circle closest-side,
+    transparent 0 calc(46.5% * var(--ink-art-scale, 1)),
+    #000 calc(47.5% * var(--ink-art-scale, 1))
+  );
+  animation: ink-orbit var(--ink-spin, 9s) linear infinite;
+}
+
+.ink-mark-blot {
+  -webkit-mask-image: radial-gradient(
+    circle closest-side,
+    #000 0 calc(46.5% * var(--ink-art-scale, 1)),
+    transparent calc(47.5% * var(--ink-art-scale, 1))
+  );
+  mask-image: radial-gradient(
+    circle closest-side,
+    #000 0 calc(46.5% * var(--ink-art-scale, 1)),
+    transparent calc(47.5% * var(--ink-art-scale, 1))
+  );
+  animation: ink-pulse calc(var(--ink-spin, 9s) / 3) ease-in-out infinite;
+}
+
+/* The art is black on transparent, so it is used as a mask over a painted fill.
+   That is what lets it take the accent colour instead of vanishing on a dark UI. */
+.ink-mark-art {
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  -webkit-mask: var(--ink-logo) center / calc(100% * var(--ink-art-scale, 1)) auto no-repeat;
+  mask: var(--ink-logo) center / calc(100% * var(--ink-art-scale, 1)) auto no-repeat;
+}
+
+@keyframes ink-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ink-pulse {
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ink-mark-pens,
+  .ink-mark-blot {
+    animation: none;
+  }
 }
 
 .logo-ink {
@@ -358,6 +435,7 @@ input {
 }
 
 .swatch {
+  position: relative;
   width: 20px;
   height: 20px;
   border-radius: 4px;
@@ -368,6 +446,18 @@ input {
 
 .swatch:hover {
   transform: scale(1.2);
+}
+
+.swatch.alt::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--text);
+  box-shadow: 0 0 0 1.5px var(--surface);
 }
 
 .swatch.selected {
@@ -685,6 +775,17 @@ input {
   line-height: 1.5;
 }
 
+/* A caption and its buttons read as one unit, tighter than the card's gap. */
+.room-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.room-group .room-actions {
+  margin-top: 0;
+}
+
 .room-actions {
   display: flex;
   gap: 8px;
@@ -842,6 +943,15 @@ input {
   margin: 0 2px 0 0;
 }
 
+.collab-code {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+  font-family: ui-monospace, Consolas, monospace;
+  letter-spacing: 1px;
+  margin-right: 2px;
+}
+
 .canvas-full-card {
   text-align: left;
 }
@@ -908,6 +1018,54 @@ input {
   color: var(--text);
 }
 
+/* The two colours in hand: back one behind, front one overlapping it. */
+.collab-duo {
+  position: relative;
+  width: 30px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.collab-duo-main,
+.collab-duo-alt {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.collab-duo-alt {
+  right: 0;
+  bottom: 0;
+}
+
+.collab-duo-main {
+  left: 0;
+  top: 0;
+}
+
+.collab-duo:hover .collab-duo-main {
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+/* A corner notch marks whichever swatch is the secondary colour. */
+.collab-swatch.alt::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--text);
+  box-shadow: 0 0 0 1.5px rgba(13, 13, 20, 0.9);
+}
+
 .collab-swatches {
   display: flex;
   gap: 3px;
@@ -915,6 +1073,7 @@ input {
 }
 
 .collab-swatch {
+  position: relative;
   width: 17px;
   height: 17px;
   border-radius: 4px;
@@ -957,6 +1116,136 @@ input {
 }
 
 /* Chat panel */
+/* Tools & shortcuts reference. The backdrop makes it modal: you are reading,
+   not drawing, so it should not be possible to mark the canvas behind it. */
+.info-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  background: rgba(5, 5, 9, 0.5);
+}
+
+.info-panel {
+  position: fixed;
+  top: 62px;
+  left: 50%;
+  translate: -50% 0;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 90px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(13, 13, 20, 0.97);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  z-index: 111;
+  overflow: hidden;
+}
+
+.info-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.info-head > button {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.info-head > button:hover {
+  color: var(--text);
+}
+
+.info-body {
+  padding: 6px 16px 16px;
+  overflow-y: auto;
+}
+
+.info-body section {
+  padding-top: 12px;
+}
+
+.info-body h4 {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 6px 0;
+}
+
+.info-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 46px;
+  padding-top: 1px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.info-word {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.info-duo {
+  position: relative;
+  display: block;
+  width: 26px;
+  height: 20px;
+}
+
+.info-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.info-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.info-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.info-foot {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
 /* Unread chat toasts — top right, under the toolbar, only while chat is shut. */
 .collab-toasts {
   position: fixed;
@@ -1133,6 +1422,31 @@ input {
 
 /* Pins only take the pointer under the select tool. With a drawing tool active
    they are inert, so a stroke crossing one is never interrupted. */
+/* Live cursors: only rendered while their owner is drawing, so they are pure
+   decoration and must never intercept a stroke. Transitioning left/top keeps
+   them smooth between the throttled position updates. */
+.remote-cursor {
+  position: absolute;
+  z-index: 25;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+  transition: left 0.08s linear, top 0.08s linear;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+}
+
+.remote-cursor-name {
+  margin-top: 10px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
 /* Positioning uses the standalone `translate`/`rotate` properties so GSAP can
    own `transform` for its animations without clobbering the layout offset. */
 .pin-marker {

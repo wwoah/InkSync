@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Welcome } from './pages/Welcome'
 import { Chat } from './pages/Chat'
-import { CollabCanvas } from './pages/CollabCanvas'
+import { CollabCanvas, LIVE_CANVAS_ID } from './pages/CollabCanvas'
 import type { User } from './types'
 
 type View =
   | { page: 'welcome'; user: User | null }
   | { page: 'room'; user: User; roomId: string }
-  | { page: 'canvas'; user: User }
+  | { page: 'canvas'; user: User; canvasId: string }
 
 function App() {
   const [view, setView] = useState<View>({ page: 'welcome', user: null })
@@ -16,7 +16,9 @@ function App() {
     return (
       <Welcome
         initialUser={view.user}
-        onEnterCanvas={(user) => setView({ page: 'canvas', user })}
+        onEnterCanvas={(user, canvasId = LIVE_CANVAS_ID) =>
+          setView({ page: 'canvas', user, canvasId })
+        }
         onEnterRoom={(user, roomId) => setView({ page: 'room', user, roomId })}
       />
     )
@@ -34,7 +36,9 @@ function App() {
 
   return (
     <CollabCanvas
+      key={view.canvasId}
       user={view.user}
+      canvasId={view.canvasId}
       onLeave={() => setView({ page: 'welcome', user: view.user })}
     />
   )

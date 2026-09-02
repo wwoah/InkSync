@@ -1,13 +1,17 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { BrushHint } from './BrushHint'
-import { CursorIcon } from './icons'
+import { CursorIcon, FillIcon, InfoIcon } from './icons'
+import { InfoPanel } from './InfoPanel'
+import type { ReactNode } from 'react'
 import { useBrushSize } from '../hooks/useBrushSize'
+import { floodFill } from '../lib/fill'
+import { isTypingTarget } from '../lib/keys'
 
 interface Props {
   onSendDrawing: (dataUrl: string) => void
 }
 
-type Tool = 'select' | 'pen' | 'eraser'
+type Tool = 'select' | 'pen' | 'eraser' | 'fill'
 
 const COLORS = [
   '#111111', '#ff4757', '#ff6b2b', '#ffd32a',
@@ -17,13 +21,46 @@ const COLORS = [
 
 const MIN_SIZE = 1
 const MAX_SIZE = 24
+const DEFAULT_ALT_COLOR = '#ffffff'
+
+const TOOLS: { id: Tool; icon: ReactNode; name: string; key: string; hint: string }[] = [
+  {
+    id: 'select',
+    icon: <CursorIcon size={14} />,
+    name: 'Select',
+    key: 'V',
+    hint: 'Pointer only — nothing you do on the canvas leaves a mark.',
+  },
+  { id: 'pen', icon: '✏', name: 'Pen', key: 'P', hint: 'Freehand strokes in the colour in hand.' },
+  {
+    id: 'eraser',
+    icon: '◻',
+    name: 'Eraser',
+    key: 'E',
+    hint: 'Paints the canvas back to white, five times the brush width.',
+  },
+  {
+    id: 'fill',
+    icon: <FillIcon size={14} />,
+    name: 'Fill',
+    key: 'F',
+    hint: 'Floods the area you click, bleeding slightly into soft stroke edges.',
+  },
+]
+/** This canvas is small, so undo can just keep whole snapshots. */
+const HISTORY_LIMIT = 30
 
 export function DrawingCanvas({ onSendDrawing }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [tool, setTool] = useState<Tool>('pen')
   const [color, setColor] = useState('#111111')
+  const [altColor, setAltColor] = useState(DEFAULT_ALT_COLOR)
+  const [infoOpen, setInfoOpen] = useState(false)
   const isDrawing = useRef(false)
   const lastPos = useRef({ x: 0, y: 0 })
+  const strokeColor = useRef('#111111')
+  const undoStack = useRef<ImageData[]>([])
+  const redoStack = useRef<ImageData[]>([])
 
   const { size, setSize, hint } = useBrushSize({
     initial: 5,
@@ -40,6 +77,26 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
     if (!ctx) return
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
+  }, [])
+
+  /** Called before any change, so the previous state can be restored. */
+  const pushHistory = useCallback(() => {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+    undoStack.current.push(ctx.getImageData(0, 0, canvas.width, canvas.height))
+    if (undoStack.current.length > HISTORY_LIMIT) undoStack.current.shift()
+    redoStack.current.length = 0
+  }, [])
+
+  const step = useCallback((from: ImageData[], to: ImageData[]) => {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+    const prev = from.pop()
+    if (!prev) return
+    to.push(ctx.getImageData(0, 0, canvas.width, canvas.height))
+    ctx.putImageData(prev, 0, 0)
   }, [])
 
   const getPos = (e: MouseEvent | TouchEvent, canvas: HTMLCanvasElement) => {
@@ -62,13 +119,27 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
   const startDraw = useCallback(
     (e: MouseEvent | TouchEvent) => {
       if (tool === 'select') return
-      if ('button' in e && e.button !== 0) return
+      const button = 'button' in e ? e.button : 0
+      if (button !== 0 && button !== 2) return
       const canvas = canvasRef.current
       if (!canvas) return
+      const paint = button === 2 ? altColor : color
+
+      if (tool === 'fill') {
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        const pos = getPos(e, canvas)
+        pushHistory()
+        if (!floodFill(ctx, pos.x, pos.y, paint)) undoStack.current.pop()
+        return
+      }
+
+      pushHistory()
       isDrawing.current = true
+      strokeColor.current = paint
       lastPos.current = getPos(e, canvas)
     },
-    [tool]
+    [tool, color, altColor, pushHistory]
   )
 
   const draw = useCallback(
@@ -83,14 +154,14 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
       ctx.beginPath()
       ctx.moveTo(lastPos.current.x, lastPos.current.y)
       ctx.lineTo(pos.x, pos.y)
-      ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : color
+      ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : strokeColor.current
       ctx.lineWidth = tool === 'eraser' ? size * 5 : size
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
       ctx.stroke()
       lastPos.current = pos
     },
-    [tool, color, size]
+    [tool, size]
   )
 
   const stopDraw = useCallback(() => {
@@ -124,11 +195,39 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
     }
   }, [startDraw, draw, stopDraw])
 
-  const clearCanvas = () => {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (isTypingTarget(e)) return
+      const key = e.key.toLowerCase()
+      if ((e.ctrlKey || e.metaKey) && (key === 'z' || key === 'y')) {
+        e.preventDefault()
+        const redo = key === 'y' || e.shiftKey
+        step(redo ? redoStack.current : undoStack.current,
+             redo ? undoStack.current : redoStack.current)
+        return
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const toolKeys: Record<string, Tool> = { p: 'pen', e: 'eraser', f: 'fill', v: 'select' }
+      if (toolKeys[key]) {
+        e.preventDefault()
+        setTool(toolKeys[key])
+        return
+      }
+      if (key === '?' || key === '/') {
+        e.preventDefault()
+        setInfoOpen((o) => !o)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [step])
+
+  const clearCanvas = (recordHistory = true) => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+    if (recordHistory) pushHistory()
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
   }
@@ -138,10 +237,11 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
     if (!canvas) return
     onSendDrawing(canvas.toDataURL('image/png'))
     clearCanvas()
+    redoStack.current.length = 0
   }
 
   return (
-    <div className="drawing-canvas-root">
+    <div className="drawing-canvas-root" onContextMenu={(e) => e.preventDefault()}>
       <div className="canvas-area">
         <canvas
           ref={canvasRef}
@@ -152,6 +252,8 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
         />
       </div>
 
+      <InfoPanel open={infoOpen} onClose={() => setInfoOpen(false)} tools={TOOLS} full={false} />
+
       <BrushHint
         hint={hint}
         width={tool === 'eraser' ? size * 5 : size}
@@ -161,42 +263,56 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
 
       <div className="toolbar">
         <div className="toolbar-tools">
+          {TOOLS.map((t) => (
+            <button
+              key={t.id}
+              className={`tool-btn ${tool === t.id ? 'active' : ''}`}
+              onClick={() => setTool(t.id)}
+              title={`${t.name} (${t.key})`}
+            >
+              {t.icon}
+            </button>
+          ))}
           <button
-            className={`tool-btn ${tool === 'select' ? 'active' : ''}`}
-            onClick={() => setTool('select')}
-            title="Select — pointer only, no drawing"
+            className={`tool-btn ${infoOpen ? 'active' : ''}`}
+            onClick={() => setInfoOpen((o) => !o)}
+            title="Tools & shortcuts (?)"
           >
-            <CursorIcon size={14} />
-          </button>
-          <button
-            className={`tool-btn ${tool === 'pen' ? 'active' : ''}`}
-            onClick={() => setTool('pen')}
-            title="Pen"
-          >
-            ✏
-          </button>
-          <button
-            className={`tool-btn ${tool === 'eraser' ? 'active' : ''}`}
-            onClick={() => setTool('eraser')}
-            title="Eraser"
-          >
-            ◻
+            <InfoIcon size={14} />
           </button>
         </div>
 
         <div className="toolbar-divider" />
 
+        <button
+          className="collab-duo"
+          onClick={() => {
+            setColor(altColor)
+            setAltColor(color)
+          }}
+          title="Left draws the front colour, right-drag draws the back one — click to swap"
+        >
+          <span className="collab-duo-alt" style={{ background: altColor }} />
+          <span className="collab-duo-main" style={{ background: color }} />
+        </button>
+
         <div className="color-swatches">
           {COLORS.map((c) => (
             <button
               key={c}
-              className={`swatch ${c === color ? 'selected' : ''}`}
+              className={`swatch ${c === color ? 'selected' : ''} ${
+                c === altColor ? 'alt' : ''
+              }`}
               style={{ background: c }}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setAltColor(c)
+              }}
               onClick={() => {
                 setColor(c)
-                if (tool !== 'pen' && tool !== 'eraser') setTool('pen')
+                if (tool !== 'pen' && tool !== 'eraser' && tool !== 'fill') setTool('pen')
               }}
-              title={c}
+              title={`${c} — right-click to set as the second colour`}
             />
           ))}
         </div>
@@ -224,7 +340,21 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
 
         <div className="toolbar-spacer" />
 
-        <button className="clear-btn" onClick={clearCanvas}>
+        <button
+          className="clear-btn"
+          onClick={() => step(undoStack.current, redoStack.current)}
+          title="Undo (Ctrl+Z)"
+        >
+          ↶
+        </button>
+        <button
+          className="clear-btn"
+          onClick={() => step(redoStack.current, undoStack.current)}
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          ↷
+        </button>
+        <button className="clear-btn" onClick={() => clearCanvas()}>
           Clear
         </button>
         <button className="send-drawing-btn" onClick={handleSend}>
