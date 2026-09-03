@@ -4,6 +4,7 @@ import { CursorIcon, FillIcon, InfoIcon } from './icons'
 import { InfoPanel } from './InfoPanel'
 import type { ReactNode } from 'react'
 import { useBrushSize } from '../hooks/useBrushSize'
+import { useLongPress } from '../hooks/useLongPress'
 import { floodFill } from '../lib/fill'
 import { isTypingTarget } from '../lib/keys'
 
@@ -61,6 +62,9 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
   const strokeColor = useRef('#111111')
   const undoStack = useRef<ImageData[]>([])
   const redoStack = useRef<ImageData[]>([])
+
+  // Right-click sets the second colour on a mouse; long-press does it on touch.
+  const altPress = useLongPress<string>((c) => setAltColor(c))
 
   const { size, setSize, hint } = useBrushSize({
     initial: 5,
@@ -304,15 +308,17 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
                 c === altColor ? 'alt' : ''
               }`}
               style={{ background: c }}
+              {...altPress.bind(c)}
               onContextMenu={(e) => {
                 e.preventDefault()
                 setAltColor(c)
               }}
               onClick={() => {
+                if (altPress.consumed()) return
                 setColor(c)
                 if (tool !== 'pen' && tool !== 'eraser' && tool !== 'fill') setTool('pen')
               }}
-              title={`${c} — right-click to set as the second colour`}
+              title={`${c} — right-click or long-press for the second colour`}
             />
           ))}
         </div>

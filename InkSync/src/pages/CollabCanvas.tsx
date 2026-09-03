@@ -8,6 +8,7 @@ import { CursorIcon, FillIcon, InfoIcon } from '../components/icons'
 import { InkMark } from '../components/InkMark'
 import { InfoPanel } from '../components/InfoPanel'
 import { useBrushSize } from '../hooks/useBrushSize'
+import { useLongPress } from '../hooks/useLongPress'
 import { prefersReducedMotion } from '../lib/motion'
 import { floodFill } from '../lib/fill'
 import { isTypingTarget } from '../lib/keys'
@@ -149,6 +150,21 @@ function clientPoint(e: MouseEvent | TouchEvent) {
     return { x: t?.clientX ?? 0, y: t?.clientY ?? 0 }
   }
   return { x: e.clientX, y: e.clientY }
+}
+
+const touchCount = (e: MouseEvent | TouchEvent) => ('touches' in e ? e.touches.length : 0)
+
+/**
+ * Where a pan gesture is anchored. With two fingers down that is the point
+ * between them, so the canvas tracks the hand rather than lurching whenever
+ * one finger moves more than the other.
+ */
+function gesturePoint(e: MouseEvent | TouchEvent) {
+  if ('touches' in e && e.touches.length >= 2) {
+    const [a, b] = [e.touches[0], e.touches[1]]
+    return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 }
+  }
+  return clientPoint(e)
 }
 
 /**
@@ -360,6 +376,12 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
   // The socket handlers are bound once, so they read the panel state off a ref.
   const chatOpenRef = useRef(chatOpen)
 
+  // Right-click sets the second colour on a mouse; long-press does it on touch.
+  const altPress = useLongPress<string>((c) => setAltColor(c))
+
+  const undo = useCallback(() => socketRef.current?.emit('canvas_undo'), [])
+  const redo = useCallback(() => socketRef.current?.emit('canvas_redo'), [])
+
   const deletePin = useCallback((id: string) => {
     socketRef.current?.emit('canvas_pin_delete', { id })
   }, [])
@@ -560,11 +582,20 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
   const handleMouseDown = useCallback(
     (e: MouseEvent | TouchEvent) => {
       const button = 'button' in e ? e.button : 0
-      const p = clientPoint(e)
+      const twoFinger = touchCount(e) >= 2
+      const p = twoFinger ? gesturePoint(e) : clientPoint(e)
 
-      // Select-drag and middle-drag both pan, whatever tool is active.
-      if (tool === 'select' || button === 1) {
+      // Select-drag, middle-drag and two fingers all pan, whatever tool is
+      // active. Two fingers is the touch equivalent: one finger always draws,
+      // so moving around no longer means switching tools and back.
+      if (tool === 'select' || button === 1 || twoFinger) {
         if (button === 1) e.preventDefault()
+        // A second finger landing mid-stroke turns the gesture into a pan. If
+        // the first finger already laid down ink on its way there, retire that
+        // stroke — a pan should not leave a scribble behind. Undo is by
+        // strokeId, so this lifts exactly the mark just made, for everyone.
+        if (isDrawing.current && didDraw.current) undo()
+        isDrawing.current = false
         panStart.current = { x: p.x, y: p.y, ox: panRef.current.x, oy: panRef.current.y }
         panMoved.current = false
         setPanning(true)
@@ -610,13 +641,13 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
       strokeId.current = newStrokeId()
       lastPos.current = getCanvasPos(e, canvas)
     },
-    [tool, color, altColor]
+    [tool, color, altColor, undo]
   )
 
   const handleMouseMove = useCallback(
     (e: MouseEvent | TouchEvent) => {
       if (panStart.current) {
-        const p = clientPoint(e)
+        const p = gesturePoint(e)
         const dx = p.x - panStart.current.x
         const dy = p.y - panStart.current.y
         if (Math.abs(dx) > CLICK_SLOP || Math.abs(dy) > CLICK_SLOP) panMoved.current = true
@@ -658,7 +689,11 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
     [applyPan, size, tool]
   )
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e?: MouseEvent | TouchEvent) => {
+    // touchend fires as each finger lifts. Keep panning until the last one is
+    // up, otherwise releasing one of two fingers would drop the gesture.
+    if (e && touchCount(e) > 0) return
+
     if (panStart.current) {
       panStart.current = null
       setPanning(false)
@@ -681,20 +716,20 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
     canvas.addEventListener('mousedown', handleMouseDown as EventListener)
     canvas.addEventListener('touchstart', handleMouseDown as EventListener, { passive: true })
     window.addEventListener('mousemove', handleMouseMove as EventListener)
-    window.addEventListener('mouseup', handleMouseUp)
+    window.addEventListener('mouseup', handleMouseUp as EventListener)
     window.addEventListener('touchmove', handleMouseMove as EventListener, { passive: true })
-    window.addEventListener('touchend', handleMouseUp)
-    window.addEventListener('touchcancel', handleMouseUp)
-    window.addEventListener('blur', handleMouseUp)
+    window.addEventListener('touchend', handleMouseUp as EventListener)
+    window.addEventListener('touchcancel', handleMouseUp as EventListener)
+    window.addEventListener('blur', handleMouseUp as EventListener)
     return () => {
       canvas.removeEventListener('mousedown', handleMouseDown as EventListener)
       canvas.removeEventListener('touchstart', handleMouseDown as EventListener)
       window.removeEventListener('mousemove', handleMouseMove as EventListener)
-      window.removeEventListener('mouseup', handleMouseUp)
+      window.removeEventListener('mouseup', handleMouseUp as EventListener)
       window.removeEventListener('touchmove', handleMouseMove as EventListener)
-      window.removeEventListener('touchend', handleMouseUp)
-      window.removeEventListener('touchcancel', handleMouseUp)
-      window.removeEventListener('blur', handleMouseUp)
+      window.removeEventListener('touchend', handleMouseUp as EventListener)
+      window.removeEventListener('touchcancel', handleMouseUp as EventListener)
+      window.removeEventListener('blur', handleMouseUp as EventListener)
     }
   }, [handleMouseDown, handleMouseMove, handleMouseUp])
 
@@ -707,12 +742,13 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
 
       if ((e.ctrlKey || e.metaKey) && key === 'z') {
         e.preventDefault()
-        socketRef.current?.emit(e.shiftKey ? 'canvas_redo' : 'canvas_undo')
+        if (e.shiftKey) redo()
+        else undo()
         return
       }
       if ((e.ctrlKey || e.metaKey) && key === 'y') {
         e.preventDefault()
-        socketRef.current?.emit('canvas_redo')
+        redo()
         return
       }
 
@@ -736,7 +772,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [toggleChat])
+  }, [toggleChat, undo, redo])
 
   useEffect(() => {
     if (chatOpen) chatInputRef.current?.focus()
@@ -942,6 +978,13 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
           </button>
         ))}
 
+        <button className="collab-ctrl-btn" onClick={undo} title="Undo (Ctrl+Z)">
+          ↶
+        </button>
+        <button className="collab-ctrl-btn" onClick={redo} title="Redo (Ctrl+Shift+Z)">
+          ↷
+        </button>
+
         <button
           className={`collab-ctrl-btn ${infoOpen ? 'hi' : ''}`}
           onClick={() => setInfoOpen((o) => !o)}
@@ -972,12 +1015,14 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
                 c === altColor ? 'alt' : ''
               }`}
               style={{ background: c }}
-              title={`${c} — right-click to set as the second colour`}
+              title={`${c} — right-click or long-press for the second colour`}
+              {...altPress.bind(c)}
               onContextMenu={(e) => {
                 e.preventDefault()
                 setAltColor(c)
               }}
               onClick={() => {
+                if (altPress.consumed()) return
                 setColor(c)
                 if (tool !== 'pen' && tool !== 'eraser' && tool !== 'fill') setTool('pen')
               }}

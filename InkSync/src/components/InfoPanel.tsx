@@ -114,7 +114,7 @@ export function InfoPanel({ open, onClose, tools, full = true }: Props) {
             <Row
               chip={<span className="info-word">R</span>}
               label="Right-click a swatch"
-              hint="Sets the back colour. The swatch gets a small corner mark."
+              hint="Sets the back colour — long-press on a touchscreen. The swatch gets a small corner mark."
             />
             <Row
               chip={<span className="info-word">R</span>}
@@ -136,6 +136,11 @@ export function InfoPanel({ open, onClose, tools, full = true }: Props) {
                   chip={<span className="info-word">⤧</span>}
                   label="Drag to pan"
                   hint="With Select active, drag the canvas to move around it. Middle-drag pans with any tool."
+                />
+                <Row
+                  chip={<span className="info-word">✌</span>}
+                  label="On a touchscreen"
+                  hint="One finger always draws; two fingers pan. Long-press a colour to set it as the back colour, and tap the paired chip to swap them."
                 />
                 <Row
                   chip={<span className="info-word">◎</span>}
