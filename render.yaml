@@ -1,0 +1,39 @@
+# Render blueprint: one dashboard, both halves of InkSync.
+#
+# The app lives in a subfolder of this repo, so every service sets rootDir.
+# Deploy with: Render -> New -> Blueprint -> point at this repo.
+services:
+  # ── The realtime server. Must be a normal web service: it holds WebSocket
+  # ── connections open and keeps all canvas state in memory.
+  - type: web
+    name: inksync-server
+    runtime: node
+    rootDir: InkSync
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      # Points at the static site below, so the CORS allowlist wires itself up.
+      # Render supplies a bare hostname; the server adds the scheme.
+      - key: CLIENT_ORIGIN
+        fromService:
+          type: web
+          name: inksync-web
+          property: host
+
+  # ── The built frontend. Static files, so this one never sleeps.
+  - type: web
+    name: inksync-web
+    runtime: static
+    rootDir: InkSync
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      # Baked into the bundle at build time. Changing it requires a rebuild,
+      # not just a restart.
+      - key: VITE_SERVER_URL
+        fromService:
+          type: web
+          name: inksync-server
+          property: host

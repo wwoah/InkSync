@@ -11,6 +11,7 @@ import { useBrushSize } from '../hooks/useBrushSize'
 import { prefersReducedMotion } from '../lib/motion'
 import { floodFill } from '../lib/fill'
 import { isTypingTarget } from '../lib/keys'
+import { SERVER_URL } from '../lib/server'
 import type { Message, User } from '../types'
 
 interface Pin {
@@ -392,7 +393,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
   }
 
   useEffect(() => {
-    const socket = io('http://localhost:3001')
+    const socket = io(SERVER_URL)
     socketRef.current = socket
 
     socket.on('connect', () => socket.emit('join_canvas', { ...user, canvasId }))

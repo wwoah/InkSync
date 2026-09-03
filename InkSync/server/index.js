@@ -4,8 +4,31 @@ import { Server } from 'socket.io'
 
 const app = express()
 const httpServer = createServer(app)
+
+// Hosts inject the port; 3001 is only the local default.
+const PORT = Number(process.env.PORT) || 3001
+
+/**
+ * Adds the scheme when it is missing. Render's blueprint can only hand over a
+ * bare hostname, and a scheme-less origin never matches, so it would silently
+ * block every connection.
+ */
+function toOrigin(value) {
+  const v = value.trim()
+  if (!v || v.includes('://')) return v
+  return /^(localhost|127\.0\.0\.1)/.test(v) ? `http://${v}` : `https://${v}`
+}
+
+// Every origin the browser may load the app from. Comma-separated, so a
+// deployed domain and localhost can both be allowed during a rollout. Without
+// the deployed origin listed here the browser blocks the socket handshake.
+const CLIENT_ORIGINS = (process.env.CLIENT_ORIGIN ?? 'http://localhost:5173')
+  .split(',')
+  .map(toOrigin)
+  .filter(Boolean)
+
 const io = new Server(httpServer, {
-  cors: { origin: 'http://localhost:5173', methods: ['GET', 'POST'] },
+  cors: { origin: CLIENT_ORIGINS, methods: ['GET', 'POST'] },
   // Canvas bakes are full-resolution lossless PNGs, well over the 1MB default.
   maxHttpBufferSize: 3.2e7,
 })
@@ -330,6 +353,13 @@ io.on('connection', (socket) => {
   })
 })
 
-httpServer.listen(3001, () => {
-  console.log('InkSync server running on :3001')
+// Somewhere to point an uptime check, and a quick way to confirm from another
+// network that the server is actually reachable.
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, canvases: canvases.size, rooms: rooms.size })
+})
+
+httpServer.listen(PORT, () => {
+  console.log(`InkSync server running on :${PORT}`)
+  console.log('Allowed origins:', CLIENT_ORIGINS.join(', '))
 })

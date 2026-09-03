@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Local env files — real values live in the host's dashboard, never in the repo.
+# .env.example is the committed template and carries only placeholders.
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -4,6 +4,7 @@ import { io, Socket } from 'socket.io-client'
 import { DrawingCanvas } from '../components/DrawingCanvas'
 import { ChatFeed } from '../components/ChatFeed'
 import { prefersReducedMotion } from '../lib/motion'
+import { SERVER_URL } from '../lib/server'
 import type { User, Message } from '../types'
 
 interface Props {
@@ -33,7 +34,7 @@ export function Chat({ user, roomId, onLeave }: Props) {
   }, [])
 
   useEffect(() => {
-    const socket = io('http://localhost:3001')
+    const socket = io(SERVER_URL)
     socketRef.current = socket
 
     socket.on('connect', () => {
