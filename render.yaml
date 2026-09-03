@@ -27,7 +27,9 @@ services:
     name: inksync-web
     runtime: static
     rootDir: InkSync
-    buildCommand: npm ci && npm run build
+    # --include=dev is required: vite and typescript are devDependencies, and
+    # Render sets NODE_ENV=production, which otherwise skips them.
+    buildCommand: npm ci --include=dev && npm run build
     staticPublishPath: dist
     envVars:
       # Baked into the bundle at build time. Changing it requires a rebuild,
