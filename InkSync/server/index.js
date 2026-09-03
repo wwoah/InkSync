@@ -353,6 +353,20 @@ io.on('connection', (socket) => {
   })
 })
 
+// Hitting this host in a browser is a natural mistake — it looks like the app
+// but only speaks WebSocket. Say so, rather than returning a bare 404.
+app.get('/', (_req, res) => {
+  res.type('text/plain').send(
+    `InkSync realtime server.
+
+This is not the app — it only carries the live drawing and chat.
+Open the InkSync site instead; it connects here in the background.
+
+Status: /health
+`
+  )
+})
+
 // Somewhere to point an uptime check, and a quick way to confirm from another
 // network that the server is actually reachable.
 app.get('/health', (_req, res) => {
