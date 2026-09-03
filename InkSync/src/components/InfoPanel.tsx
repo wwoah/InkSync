@@ -143,6 +143,11 @@ export function InfoPanel({ open, onClose, tools, full = true }: Props) {
                   hint="Drop one with the Pin tool. Switch to Select to open and close them — drawing tools pass straight over."
                 />
                 <Row
+                  chip={<span className="info-word">×</span>}
+                  label="Clearing comments"
+                  hint="Open a comment and hit the × in its corner. Anyone on the canvas can clear any comment, so clutter never gets stuck."
+                />
+                <Row
                   chip={<span className="info-word">✎</span>}
                   label="Live cursors"
                   hint="You only see other people's cursors while they are actually drawing."

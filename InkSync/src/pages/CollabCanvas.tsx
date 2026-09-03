@@ -164,14 +164,37 @@ function snapshot(canvas: HTMLCanvasElement) {
 function PinMarker({
   pin,
   open,
+  leaving,
   onToggle,
+  onDelete,
+  onGone,
 }: {
   pin: Pin
   open: boolean
+  /** Deleted elsewhere; play it out, then tell the parent to drop it. */
+  leaving: boolean
   onToggle: () => void
+  onDelete: (id: string) => void
+  onGone: (id: string) => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const bubbleRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!leaving) return
+    const ctx = gsap.context(() => {
+      // Duration 0 under reduced motion still fires onComplete on the next
+      // tick, which keeps the removal out of the effect body either way.
+      gsap.to(ref.current, {
+        scale: 0,
+        opacity: 0,
+        duration: prefersReducedMotion() ? 0 : 0.28,
+        ease: 'back.in(2)',
+        onComplete: () => onGone(pin.id),
+      })
+    }, ref)
+    return () => ctx.revert()
+  }, [leaving, onGone, pin.id])
 
   useEffect(() => {
     if (prefersReducedMotion()) return
@@ -218,9 +241,22 @@ function PinMarker({
       <div className="pin-dot" style={{ background: pin.user.color }} />
       {open && (
         <div className="pin-bubble" ref={bubbleRef}>
-          <span className="pin-author" style={{ color: pin.user.color }}>
-            {pin.user.username}
-          </span>
+          <div className="pin-bubble-head">
+            <span className="pin-author" style={{ color: pin.user.color }}>
+              {pin.user.username}
+            </span>
+            <button
+              className="pin-delete"
+              title="Delete this comment"
+              aria-label="Delete comment"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(pin.id)
+              }}
+            >
+              ×
+            </button>
+          </div>
           <p className="pin-text">{pin.text}</p>
         </div>
       )}
@@ -312,6 +348,8 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
   const [pendingPin, setPendingPin] = useState<{ xPct: number; yPct: number } | null>(null)
   const [pinText, setPinText] = useState('')
   const [activePin, setActivePin] = useState<string | null>(null)
+  /** Deleted server-side, still animating out. */
+  const [leavingPins, setLeavingPins] = useState<string[]>([])
   const [toasts, setToasts] = useState<Message[]>([])
   const [unread, setUnread] = useState(0)
   const [capacity, setCapacity] = useState<number | null>(null)
@@ -321,6 +359,16 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
 
   // The socket handlers are bound once, so they read the panel state off a ref.
   const chatOpenRef = useRef(chatOpen)
+
+  const deletePin = useCallback((id: string) => {
+    socketRef.current?.emit('canvas_pin_delete', { id })
+  }, [])
+
+  /** Called once the exit animation has finished. */
+  const dropPin = useCallback((id: string) => {
+    setPins((p) => p.filter((x) => x.id !== id))
+    setLeavingPins((l) => l.filter((x) => x !== id))
+  }, [])
 
   const expireToast = useCallback((id: string) => {
     setToasts((t) => t.filter((x) => x.id !== id))
@@ -477,6 +525,11 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
     })
 
     socket.on('canvas_pin', (pin: Pin) => setPins((p) => [...p, pin]))
+
+    socket.on('canvas_pin_removed', ({ id }: { id: string }) => {
+      setActivePin((cur) => (cur === id ? null : cur))
+      setLeavingPins((l) => (l.includes(id) ? l : [...l, id]))
+    })
 
     socket.on('canvas_message', (msg: Message) => {
       setMessages((prev) => [...prev, msg])
@@ -795,7 +848,10 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
             key={pin.id}
             pin={pin}
             open={activePin === pin.id}
+            leaving={leavingPins.includes(pin.id)}
             onToggle={() => setActivePin(activePin === pin.id ? null : pin.id)}
+            onDelete={deletePin}
+            onGone={dropPin}
           />
         ))}
 

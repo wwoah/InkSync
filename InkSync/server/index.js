@@ -316,6 +316,21 @@ io.on('connection', (socket) => {
     io.to(canvasRoom(socket.data.canvasId)).emit('canvas_pin', pin)
   })
 
+  /**
+   * Anyone on the canvas can clear any comment. The alternative — author only —
+   * leaves pins from people who have since left permanently stuck on the
+   * canvas, which is the clutter this is meant to solve. Restricting it would
+   * mean comparing `pin.user.username` against the caller's here.
+   */
+  socket.on('canvas_pin_delete', ({ id }) => {
+    const canvas = myCanvas()
+    if (!canvas) return
+    const before = canvas.pins.length
+    canvas.pins = canvas.pins.filter((p) => p.id !== id)
+    if (canvas.pins.length === before) return
+    io.to(canvasRoom(socket.data.canvasId)).emit('canvas_pin_removed', { id })
+  })
+
   socket.on('canvas_chat', ({ text }) => {
     const canvas = myCanvas()
     if (!canvas) return

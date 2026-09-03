@@ -1490,13 +1490,37 @@ input {
   z-index: 30;
 }
 
+.pin-bubble-head {
+  margin-bottom: 4px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Only reachable with a bubble open, so a stray click can't wipe a comment. */
+.pin-delete {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+  margin-top: -2px;
+  flex-shrink: 0;
+  transition: color 0.12s;
+}
+
+.pin-delete:hover {
+  color: #ff6b6b;
+}
+
 .pin-author {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   display: block;
-  margin-bottom: 4px;
 }
 
 .pin-text {
