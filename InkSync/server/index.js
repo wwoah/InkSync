@@ -19,13 +19,20 @@ function toOrigin(value) {
   return /^(localhost|127\.0\.0\.1)/.test(v) ? `http://${v}` : `https://${v}`
 }
 
-// Every origin the browser may load the app from. Comma-separated, so a
-// deployed domain and localhost can both be allowed during a rollout. Without
-// the deployed origin listed here the browser blocks the socket handshake.
-const CLIENT_ORIGINS = (process.env.CLIENT_ORIGIN ?? 'http://localhost:5173')
-  .split(',')
-  .map(toOrigin)
-  .filter(Boolean)
+/**
+ * Origins the browser may load the app from, comma-separated.
+ *
+ * Unset means "any origin". That is deliberate: this server has no auth, no
+ * cookies and no private data, and CORS only ever constrains browsers — a
+ * script can open a socket regardless. Defaulting to a locked-down localhost
+ * made a deploy that forgot this variable fail *silently*, with every visitor
+ * turned away and nothing in the logs to say why. Working-but-open is the
+ * better default here; set CLIENT_ORIGIN to restrict it to your own site.
+ */
+const rawOrigin = process.env.CLIENT_ORIGIN?.trim()
+const CLIENT_ORIGINS = rawOrigin
+  ? rawOrigin.split(',').map(toOrigin).filter(Boolean)
+  : '*'
 
 const io = new Server(httpServer, {
   cors: { origin: CLIENT_ORIGINS, methods: ['GET', 'POST'] },
@@ -370,10 +377,22 @@ Status: /health
 // Somewhere to point an uptime check, and a quick way to confirm from another
 // network that the server is actually reachable.
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, canvases: canvases.size, rooms: rooms.size })
+  // `origins` and `sockets` are here so a misconfigured deploy can be diagnosed
+  // from outside: if your site's URL is missing from the allowlist, browsers are
+  // being turned away, and sockets stays at 0 however many people are looking.
+  res.json({
+    ok: true,
+    origins: CLIENT_ORIGINS,
+    sockets: io.engine.clientsCount,
+    canvases: canvases.size,
+    rooms: rooms.size,
+  })
 })
 
 httpServer.listen(PORT, () => {
   console.log(`InkSync server running on :${PORT}`)
-  console.log('Allowed origins:', CLIENT_ORIGINS.join(', '))
+  console.log(
+    'Allowed origins:',
+    CLIENT_ORIGINS === '*' ? '* (any — set CLIENT_ORIGIN to restrict)' : CLIENT_ORIGINS.join(', ')
+  )
 })
