@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { Avatar } from './Avatar'
+import { normalizeAvatar } from '../lib/avatar'
 import type { Message, User } from '../types'
 
 interface Props {
@@ -38,6 +40,13 @@ export function ChatFeed({ messages, currentUser }: Props) {
         return (
           <div key={msg.id} className={`message ${isOwn ? 'own' : ''}`}>
             <div className="msg-meta">
+              {msg.user && (
+                <Avatar
+                  color={msg.user.color}
+                  avatar={normalizeAvatar(msg.user.avatar)}
+                  size={20}
+                />
+              )}
               <span className="msg-author" style={{ color: msg.user?.color }}>
                 {msg.user?.username}
               </span>

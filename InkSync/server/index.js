@@ -1,6 +1,7 @@
 import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
+import { createEngine, getGame, hasGame, gameRoom, GAME_CAPACITY } from './thinkink.js'
 
 const app = express()
 const httpServer = createServer(app)
@@ -154,12 +155,14 @@ function trim(arr, max = 300) {
   if (arr.length > max) arr.splice(0, arr.length - max)
 }
 
+const engine = createEngine(io)
+
 io.on('connection', (socket) => {
   // ── Private Room ──────────────────────────────
 
-  socket.on('join_room', ({ username, color, roomId }) => {
+  socket.on('join_room', ({ username, color, avatar, roomId }) => {
     const room = getRoom(roomId)
-    room.users.set(socket.id, { username, color })
+    room.users.set(socket.id, { username, color, avatar })
     socket.join(`room:${roomId}`)
     socket.data.roomId = roomId
 
@@ -195,7 +198,7 @@ io.on('connection', (socket) => {
     return c && c.users.has(socket.id) ? c : null
   }
 
-  socket.on('join_canvas', ({ username, color, canvasId }) => {
+  socket.on('join_canvas', ({ username, color, avatar, canvasId }) => {
     // Normalise once: codes are case-insensitive, and the open canvas keeps its
     // lowercase id. Deriving the key and the room from different strings would
     // leave the socket pointing at a canvas that does not exist.
@@ -211,9 +214,9 @@ io.on('connection', (socket) => {
       return
     }
 
-    canvas.users.set(socket.id, { username, color })
+    canvas.users.set(socket.id, { username, color, avatar })
     socket.join(room)
-    socket.data.canvasUser = { username, color }
+    socket.data.canvasUser = { username, color, avatar }
     socket.data.canvasId = id
 
     socket.emit('canvas_init', {
@@ -341,9 +344,105 @@ io.on('connection', (socket) => {
     io.to(canvasRoom(socket.data.canvasId)).emit('canvas_message', msg)
   })
 
+  // ── ThinkInk ───────────────────────────────────
+
+  const myGame = () => {
+    const code = socket.data.gameCode
+    if (!code || !hasGame(code)) return null
+    const g = getGame(code)
+    return g.players.has(socket.id) ? g : null
+  }
+
+  socket.on('game_join', ({ username, color, avatar, code }) => {
+    const id = String(code || '').trim().toUpperCase().slice(0, 12)
+    if (!id) return
+    const game = getGame(id)
+
+    if (!game.players.has(socket.id) && game.players.size >= GAME_CAPACITY) {
+      socket.emit('game_full', { capacity: GAME_CAPACITY })
+      return
+    }
+
+    socket.join(gameRoom(id))
+    socket.data.gameCode = id
+    engine.join(game, socket.id, { username, color, avatar })
+    engine.say(game, username + ' joined')
+
+    // Someone arriving mid-turn still needs to see what has been drawn.
+    if (game.phase === 'drawing') socket.emit('game_replay', { strokes: game.strokes })
+  })
+
+  socket.on('game_settings', (patch) => {
+    const game = myGame()
+    if (game) engine.setSettings(game, socket.id, patch ?? {})
+  })
+
+  socket.on('game_ready', ({ ready }) => {
+    const game = myGame()
+    if (game) engine.setReady(game, socket.id, Boolean(ready))
+  })
+
+  socket.on('game_choose', ({ word }) => {
+    const game = myGame()
+    if (game) engine.chooseWord(game, socket.id, word)
+  })
+
+  socket.on('game_draw', (op) => {
+    const game = myGame()
+    if (!game || !engine.addStroke(game, socket.id, op)) return
+    socket.to(gameRoom(game.code)).emit('game_draw', op)
+  })
+
+  socket.on('game_clear', () => {
+    const game = myGame()
+    if (!game || !engine.clearStrokes(game, socket.id)) return
+    io.to(gameRoom(game.code)).emit('game_clear')
+  })
+
+  socket.on('game_guess', ({ text }) => {
+    const game = myGame()
+    if (!game) return
+    const body = String(text || '').slice(0, 200).trim()
+    if (!body) return
+
+    const player = game.players.get(socket.id)
+    const verdict = engine.handleMessage(game, socket.id, body)
+
+    if (verdict === 'chat') {
+      io.to(gameRoom(game.code)).emit('game_message', {
+        id: uid(),
+        user: player.user,
+        type: 'text',
+        content: body,
+        timestamp: Date.now(),
+      })
+    } else if (verdict === 'close') {
+      // Only the guesser hears this; announcing it would hint to everyone.
+      socket.emit('game_close', { text: body })
+    } else if (verdict === 'blocked') {
+      socket.emit('game_blocked')
+    }
+  })
+
+  socket.on('game_leave', () => {
+    const game = myGame()
+    if (!game) return
+    socket.leave(gameRoom(game.code))
+    engine.leave(game, socket.id)
+    socket.data.gameCode = null
+  })
+
   // ── Disconnect ────────────────────────────────
 
   socket.on('disconnect', () => {
+    const gameCode = socket.data.gameCode
+    if (gameCode && hasGame(gameCode)) {
+      const g = getGame(gameCode)
+      const p = g.players.get(socket.id)
+      if (p) engine.say(g, p.user.username + ' left')
+      engine.leave(g, socket.id)
+    }
+
     const roomId = socket.data.roomId
     if (roomId) {
       const room = rooms.get(roomId)

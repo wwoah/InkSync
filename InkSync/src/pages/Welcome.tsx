@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { InkMark } from '../components/InkMark'
+import { Carousel } from '../components/Carousel'
+import { AvatarPicker } from '../components/AvatarPicker'
+import { Avatar } from '../components/Avatar'
+import { DEFAULT_AVATAR, normalizeAvatar } from '../lib/avatar'
+import { saveProfile } from '../lib/profile'
 import { prefersReducedMotion } from '../lib/motion'
 import type { User } from '../types'
 
@@ -8,6 +13,7 @@ interface Props {
   initialUser?: User | null
   onEnterCanvas: (user: User, canvasId?: string) => void
   onEnterRoom: (user: User, roomId: string) => void
+  onEnterGame: (user: User, code: string) => void
 }
 
 const COLOR_OPTIONS = [
@@ -173,12 +179,15 @@ function ChoiceCard({
   )
 }
 
-export function Welcome({ initialUser, onEnterCanvas, onEnterRoom }: Props) {
+export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }: Props) {
   const [step, setStep] = useState<'identity' | 'destination'>(
     initialUser ? 'destination' : 'identity',
   )
   const [username, setUsername] = useState(initialUser?.username ?? '')
   const [color, setColor] = useState(initialUser?.color ?? COLOR_OPTIONS[4])
+  const [avatar, setAvatar] = useState(() =>
+    initialUser?.avatar ? normalizeAvatar(initialUser.avatar) : DEFAULT_AVATAR
+  )
   const cardRef = useRef<HTMLDivElement>(null)
   const stepRef = useRef<HTMLDivElement>(null)
 
@@ -218,10 +227,12 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom }: Props) {
   }, [step])
 
   const trimmed = username.trim()
-  const user: User = { username: trimmed, color }
+  const user: User = { username: trimmed, color, avatar }
 
   const handleContinue = () => {
     if (!trimmed) return
+    // Remember the face for next time before leaving this step.
+    saveProfile(user)
     setStep('destination')
   }
 
@@ -238,6 +249,8 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom }: Props) {
         <div className="welcome-step" ref={stepRef}>
         {step === 'identity' ? (
           <>
+            <AvatarPicker color={color} avatar={avatar} onChange={setAvatar} />
+
             <div className="field">
               <label className="field-label">handle</label>
               <input
@@ -252,7 +265,7 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom }: Props) {
             </div>
 
             <div className="field">
-              <label className="field-label">your color</label>
+              <label className="field-label">your colour</label>
               <div className="color-row">
                 {COLOR_OPTIONS.map((c) => (
                   <button
@@ -277,7 +290,7 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom }: Props) {
         ) : (
           <>
             <div className="welcome-identity">
-              <span className="identity-dot" style={{ background: color }} />
+              <Avatar color={color} avatar={avatar} size={28} />
               <span className="identity-name" style={{ color }}>{trimmed}</span>
               <button
                 className="identity-edit"
@@ -290,25 +303,51 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom }: Props) {
             <div className="field">
               <label className="field-label">where to?</label>
 
-              <div className="choice-list">
-                <ChoiceCard
-                  icon="◈"
-                  title="Canvas"
-                  desc="One big shared surface — draw together, pin comments, chat."
-                  noun="Canvas"
-                  openLabel="Live Canvas"
-                  onEnterOpen={() => onEnterCanvas(user)}
-                  onEnterCode={(id) => onEnterCanvas(user, id)}
-                />
-
-                <ChoiceCard
-                  icon="◇"
-                  title="Private Room"
-                  desc="Draw and chat in a private space with a room code."
-                  noun="Room"
-                  onEnterCode={(id) => onEnterRoom(user, id)}
-                />
-              </div>
+              <Carousel
+                slides={[
+                  {
+                    key: 'canvas',
+                    label: 'Canvas',
+                    content: (
+                      <ChoiceCard
+                        icon="◈"
+                        title="Canvas"
+                        desc="One big shared surface. Draw together, pin comments, chat."
+                        noun="Canvas"
+                        openLabel="Live Canvas"
+                        onEnterOpen={() => onEnterCanvas(user)}
+                        onEnterCode={(id) => onEnterCanvas(user, id)}
+                      />
+                    ),
+                  },
+                  {
+                    key: 'room',
+                    label: 'Private Room',
+                    content: (
+                      <ChoiceCard
+                        icon="◇"
+                        title="Private Room"
+                        desc="Draw and chat in a private space with a room code."
+                        noun="Room"
+                        onEnterCode={(id) => onEnterRoom(user, id)}
+                      />
+                    ),
+                  },
+                  {
+                    key: 'thinkink',
+                    label: 'ThinkInk',
+                    content: (
+                      <ChoiceCard
+                        icon="◐"
+                        title="ThinkInk"
+                        desc="One player draws a secret word, everyone else races to guess it."
+                        noun="Game"
+                        onEnterCode={(id) => onEnterGame(user, id)}
+                      />
+                    ),
+                  },
+                ]}
+              />
             </div>
           </>
         )}

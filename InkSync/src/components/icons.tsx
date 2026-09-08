@@ -39,3 +39,35 @@ export function InfoIcon({ size = 13 }: { size?: number }) {
     </svg>
   )
 }
+
+/**
+ * Carousel chevron. Drawn rather than typed: the `‹` and `›` glyphs carry
+ * uneven side bearings, so they never sit centred in a square button however
+ * the padding is nudged. This path is symmetric about the viewBox centre.
+ */
+export function ChevronIcon({
+  size = 16,
+  dir = 'left',
+}: {
+  size?: number
+  dir?: 'left' | 'right'
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      style={dir === 'right' ? { transform: 'scaleX(-1)' } : undefined}
+    >
+      <path
+        d="M10.5 3.5 5.5 8l5 4.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
