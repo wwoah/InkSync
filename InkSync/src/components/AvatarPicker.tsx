@@ -1,5 +1,5 @@
 import { Avatar } from './Avatar'
-import { ChevronIcon } from './icons'
+import { ChevronIcon, DiceIcon } from './icons'
 import { cyclePart, findPart, randomAvatar } from '../lib/avatar'
 import type { AvatarConfig, PartKind } from '../lib/avatar'
 
@@ -29,7 +29,7 @@ export function AvatarPicker({ color, avatar, onChange, owned }: Props) {
           title="Surprise me"
           aria-label="Randomise avatar"
         >
-          ⚄
+          <DiceIcon size={16} />
         </button>
       </div>
 

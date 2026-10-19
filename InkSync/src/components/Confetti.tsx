@@ -20,6 +20,12 @@ interface Bit {
   drift: number
   rise: number
   spin: number
+  /**
+   * Turns about the horizontal and vertical axes. Real confetti is paper, and
+   * paper flutters — it flips edge-on as it falls rather than spinning flat.
+   */
+  flipX: number
+  flipY: number
   delay: number
   dur: number
 }
@@ -47,21 +53,25 @@ export function Confetti({ colors, fireKey, count = 80 }: Props) {
   const paletteKey = colors.join(',')
 
   const bits = useMemo<Bit[]>(() => {
-    const palette = paletteKey ? paletteKey.split(',') : ['#6c54f5']
+    const palette = paletteKey ? paletteKey.split(',') : ['#2f62c4']
     const rng = seeded(fireKey || 1)
     const rand = (a: number, b: number) => a + rng() * (b - a)
+    const either = () => (rng() < 0.5 ? -1 : 1)
     return Array.from({ length: count }, (_, i) => ({
       color: palette[i % palette.length],
       w: rand(5, 11),
       h: rand(7, 15),
+      // The round ones are hole-punch dots.
       round: rng() < 0.25,
       // Clustered toward the middle, where the podium is.
       from: 50 + rand(-34, 34),
       drift: rand(-190, 190),
       rise: rand(90, 240),
-      spin: rand(-720, 720),
+      spin: rand(-360, 360),
+      flipX: either() * rand(360, 1080),
+      flipY: either() * rand(180, 720),
       delay: rand(0, 0.5),
-      dur: rand(1.6, 2.8),
+      dur: rand(2.2, 3.4),
     }))
   }, [fireKey, count, paletteKey])
 
@@ -80,22 +90,36 @@ export function Confetti({ colors, fireKey, count = 80 }: Props) {
           // Up and out of the podium first…
           .fromTo(
             el,
-            { x: 0, y: 0, opacity: 1, rotation: 0, scale: 1 },
+            {
+              x: 0,
+              y: 0,
+              opacity: 1,
+              rotation: 0,
+              rotationX: 0,
+              rotationY: 0,
+              scale: 1,
+              transformPerspective: 500,
+            },
             {
               x: b.drift * 0.45,
               y: -b.rise,
               rotation: b.spin * 0.3,
+              rotationX: b.flipX * 0.2,
               duration: 0.55,
               ease: 'power2.out',
             }
           )
-          // …then down past the bottom, tumbling.
+          // …then drifting down past the bottom, fluttering. Paper meets air
+          // resistance almost at once, so the fall is closer to steady than
+          // to a stone's acceleration.
           .to(el, {
             x: b.drift,
             y: 460,
             rotation: b.spin,
+            rotationX: b.flipX,
+            rotationY: b.flipY,
             duration: b.dur,
-            ease: 'power1.in',
+            ease: 'sine.in',
           })
           .to(el, { opacity: 0, duration: 0.5 }, `-=0.5`)
       })

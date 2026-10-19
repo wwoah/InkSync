@@ -3,7 +3,9 @@ import gsap from 'gsap'
 import { io, Socket } from 'socket.io-client'
 import { DrawingCanvas } from '../components/DrawingCanvas'
 import { ChatFeed } from '../components/ChatFeed'
+import { BackIcon } from '../components/icons'
 import { prefersReducedMotion } from '../lib/motion'
+import { onPaper } from '../lib/palette'
 import { SERVER_URL } from '../lib/server'
 import type { User, Message } from '../types'
 
@@ -73,12 +75,14 @@ export function Chat({ user, roomId, onLeave }: Props) {
     <div className="chat-page" ref={pageRef}>
       <header className="chat-header">
         <div className="header-left">
-          <button className="back-btn" onClick={onLeave}>←</button>
+          <button className="back-btn" onClick={onLeave} aria-label="Back">
+            <BackIcon />
+          </button>
           <span className="header-logo">InkSync</span>
           <span className="header-room">/ {roomId}</span>
         </div>
         <div className="header-right">
-          <span className="header-user" style={{ color: user.color }}>
+          <span className="header-user" style={{ color: onPaper(user.color) }}>
             {user.username}
           </span>
           <span className="header-count">

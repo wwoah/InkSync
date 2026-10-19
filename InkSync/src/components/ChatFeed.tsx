@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Avatar } from './Avatar'
 import { normalizeAvatar } from '../lib/avatar'
+import { onPaper } from '../lib/palette'
 import type { Message, User } from '../types'
 
 interface Props {
@@ -47,14 +48,21 @@ export function ChatFeed({ messages, currentUser }: Props) {
                   size={20}
                 />
               )}
-              <span className="msg-author" style={{ color: msg.user?.color }}>
+              <span
+                className="msg-author"
+                style={{ color: msg.user ? onPaper(msg.user.color) : undefined }}
+              >
                 {msg.user?.username}
               </span>
               <span className="msg-time">{formatTime(msg.timestamp)}</span>
             </div>
 
             {msg.type === 'drawing' ? (
-              <img src={msg.content} className="msg-drawing" alt="drawing" />
+              // Taped into the notebook, like a sketch pasted onto the page.
+              <span className="msg-drawing">
+                <img src={msg.content} alt="drawing" />
+                <span className="tape" aria-hidden="true" />
+              </span>
             ) : (
               <div className="msg-text">{msg.content}</div>
             )}

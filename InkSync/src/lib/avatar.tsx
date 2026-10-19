@@ -183,6 +183,15 @@ const MOUTHS: AvatarPart[] = [
 /** A soft floor shade, so a flat fill still reads as a head rather than a disc. */
 const shade = (d: string) => <path d={d} fill="rgba(0,0,0,0.13)" />
 
+/**
+ * A marker outline round every body. On paper a pale body — marigold, or the
+ * white some older profiles still carry — would otherwise melt into the sheet,
+ * and the line makes the faces read as doodles, of a piece with the inked
+ * eyes and mouths. Every body keeps at least 2 units clear of the box edge,
+ * so half this width never gets clipped.
+ */
+const outline = { stroke: '#15151c', strokeWidth: 3.5 } as const
+
 const BODIES: AvatarPart[] = [
   {
     id: 'round',
@@ -191,7 +200,7 @@ const BODIES: AvatarPart[] = [
       kind: 'draw',
       render: (c) => (
         <>
-          <circle cx="50" cy="50" r="46" fill={c} />
+          <circle cx="50" cy="50" r="46" fill={c} {...outline} />
           {shade('M50 96a46 46 0 0 0 44-32 46 46 0 0 1-88 0 46 46 0 0 0 44 32z')}
         </>
       ),
@@ -204,7 +213,7 @@ const BODIES: AvatarPart[] = [
       kind: 'draw',
       render: (c) => (
         <>
-          <rect x="6" y="6" width="88" height="88" rx="24" fill={c} />
+          <rect x="6" y="6" width="88" height="88" rx="24" fill={c} {...outline} />
           {shade('M50 94h20a24 24 0 0 0 24-24v-6a46 46 0 0 1-88 0v6a24 24 0 0 0 24 24z')}
         </>
       ),
@@ -217,8 +226,8 @@ const BODIES: AvatarPart[] = [
       kind: 'draw',
       render: (c) => (
         <>
-          <ellipse cx="50" cy="52" rx="40" ry="46" fill={c} />
-          {shade('M50 98a40 46 0 0 0 38-28 40 46 0 0 1-76 0 40 46 0 0 0 38 28z')}
+          <ellipse cx="50" cy="51" rx="40" ry="46" fill={c} {...outline} />
+          {shade('M50 97a40 46 0 0 0 38-28 40 46 0 0 1-76 0 40 46 0 0 0 38 28z')}
         </>
       ),
     },
@@ -233,6 +242,7 @@ const BODIES: AvatarPart[] = [
           <path
             d="M50 5c26 0 45 18 45 43 0 28-19 47-45 47S5 76 5 48C5 23 24 5 50 5z"
             fill={c}
+            {...outline}
           />
           {shade('M50 95c26 0 45-19 45-47 0-4 0-7-1-10a45 45 0 0 1-88 0c-1 3-1 6-1 10 0 28 19 47 45 47z')}
         </>

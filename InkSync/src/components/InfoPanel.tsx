@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import gsap from 'gsap'
-import { prefersReducedMotion } from '../lib/motion'
+import { CloseIcon, CursorIcon, PanIcon, PinIcon, ScrollIcon, TouchIcon } from './icons'
+import { prefersReducedMotion, unfold } from '../lib/motion'
 
 export interface ToolInfo {
   icon: ReactNode
@@ -44,21 +45,11 @@ export function InfoPanel({ open, onClose, tools, full = true }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  // Opens like a note folded along its top edge.
   useEffect(() => {
     if (!open || prefersReducedMotion()) return
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        ref.current,
-        { opacity: 0, y: -12, scale: 0.98 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.24,
-          ease: 'power3.out',
-          clearProps: 'opacity,transform',
-        }
-      )
+      unfold(ref.current)
     }, ref)
     return () => ctx.revert()
   }, [open])
@@ -72,7 +63,7 @@ export function InfoPanel({ open, onClose, tools, full = true }: Props) {
         <div className="info-head">
           <span>Tools &amp; shortcuts</span>
           <button onClick={onClose} aria-label="Close">
-            ×
+            <CloseIcon />
           </button>
         </div>
 
@@ -100,7 +91,7 @@ export function InfoPanel({ open, onClose, tools, full = true }: Props) {
               chip={
                 <span className="info-duo">
                   <span className="collab-duo-alt" style={{ background: '#ffffff' }} />
-                  <span className="collab-duo-main" style={{ background: '#1e90ff' }} />
+                  <span className="collab-duo-main" style={{ background: '#2f62c4' }} />
                 </span>
               }
               label="Front and back"
@@ -126,34 +117,34 @@ export function InfoPanel({ open, onClose, tools, full = true }: Props) {
           <section>
             <h4>Canvas</h4>
             <Row
-              chip={<span className="info-word">⇅</span>}
+              chip={<ScrollIcon />}
               label="Scroll wheel"
               hint="Grows and shrinks the brush, with a true-to-size ring at the cursor."
             />
             {full && (
               <>
                 <Row
-                  chip={<span className="info-word">⤧</span>}
+                  chip={<PanIcon />}
                   label="Drag to pan"
                   hint="With Select active, drag the canvas to move around it. Middle-drag pans with any tool."
                 />
                 <Row
-                  chip={<span className="info-word">✌</span>}
+                  chip={<TouchIcon />}
                   label="On a touchscreen"
                   hint="One finger always draws; two fingers pan. Long-press a colour to set it as the back colour, and tap the paired chip to swap them."
                 />
                 <Row
-                  chip={<span className="info-word">◎</span>}
+                  chip={<PinIcon />}
                   label="Comments"
                   hint="Drop one with the Pin tool. Switch to Select to open and close them — drawing tools pass straight over."
                 />
                 <Row
-                  chip={<span className="info-word">×</span>}
+                  chip={<CloseIcon />}
                   label="Clearing comments"
                   hint="Open a comment and hit the × in its corner. Anyone on the canvas can clear any comment, so clutter never gets stuck."
                 />
                 <Row
-                  chip={<span className="info-word">✎</span>}
+                  chip={<CursorIcon size={14} />}
                   label="Live cursors"
                   hint="You only see other people's cursors while they are actually drawing."
                 />

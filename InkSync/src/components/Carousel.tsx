@@ -16,6 +16,14 @@ export interface Slide {
 const SWIPE_PX = 45
 
 /**
+ * Degrees of tilt per slot away from centre. Cards swing on their bottom edge
+ * as they leave and straighten as they arrive, like index cards being dealt.
+ * Tilting outward lifts each card's top corner away from the viewport, so an
+ * off-screen card never pokes a sliver back into view.
+ */
+const DEAL_TILT = 3
+
+/**
  * Where a slide sits relative to the one on show, as a signed number of slots.
  * Wrapping to the shortest way round is what lets the last slide sit just left
  * of the first, so stepping back from the first is a single step, not a sweep
@@ -79,11 +87,16 @@ export function Carousel({ slides }: { slides: Slide[] }) {
       // side of a wrap. Sliding it would drag it across the viewport, so it is
       // simply put where it belongs.
       const teleport = firstRun || prev === undefined || Math.abs(next - prev) > 1
+      const pose = {
+        xPercent: next * 100,
+        rotation: Math.sign(next) * DEAL_TILT,
+        transformOrigin: '50% 100%',
+      }
       if (teleport || still) {
-        gsap.set(el, { xPercent: next * 100 })
+        gsap.set(el, pose)
         return null
       }
-      return gsap.to(el, { xPercent: next * 100, duration: 0.4, ease: 'power3.out' })
+      return gsap.to(el, { ...pose, duration: 0.45, ease: 'power3.out' })
     })
 
     return () => tweens.forEach((t) => t?.kill())

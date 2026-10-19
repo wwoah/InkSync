@@ -3,6 +3,8 @@ import gsap from 'gsap'
 import { io, Socket } from 'socket.io-client'
 import { Avatar } from '../components/Avatar'
 import { InkMark } from '../components/InkMark'
+import { Wordmark } from '../components/Wordmark'
+import { BackIcon, CheckIcon } from '../components/icons'
 import { GameCanvas } from '../components/GameCanvas'
 import { LeadTimeline } from '../components/LeadTimeline'
 import { ScoreChart } from '../components/ScoreChart'
@@ -12,6 +14,7 @@ import { GameSettings as SettingsPanel } from '../components/GameSettings'
 import type { GameCanvasHandle, GameOp } from '../components/GameCanvas'
 import { normalizeAvatar } from '../lib/avatar'
 import { prefersReducedMotion } from '../lib/motion'
+import { onPaper } from '../lib/palette'
 import { SERVER_URL } from '../lib/server'
 import type { Message, User } from '../types'
 
@@ -226,16 +229,18 @@ export function ThinkInk({ user, code, onLeave }: Props) {
     return (
       <div className="welcome-page">
         <div className="welcome-card canvas-full-card">
-          <div className="welcome-logo">
-            <InkMark size={56} />
-            <span className="logo-ink">Think</span>
-            <span className="logo-sync">Ink</span>
-          </div>
+          <span className="tape tape-left" aria-hidden="true" />
+          <span className="tape tape-right" aria-hidden="true" />
+          <Wordmark first="Think" second="Ink" size={56} />
           <p className="welcome-sub">this game is full</p>
           <p className="canvas-full-text">
             All {full} seats are taken. Try another code, or start your own game.
           </p>
-          <button className="join-btn" onClick={onLeave} style={{ borderColor: user.color, color: user.color }}>
+          <button
+            className="join-btn"
+            onClick={onLeave}
+            style={{ ['--who' as string]: user.color }}
+          >
             Back
           </button>
         </div>
@@ -249,7 +254,9 @@ export function ThinkInk({ user, code, onLeave }: Props) {
   return (
     <div className="game-page">
       <header className="game-header">
-        <button className="back-btn" onClick={onLeave}>←</button>
+        <button className="back-btn" onClick={onLeave} aria-label="Back">
+          <BackIcon />
+        </button>
         <InkMark size={26} />
         <span className="game-logo">ThinkInk</span>
         <span className="game-code">/ {code}</span>
@@ -297,7 +304,11 @@ export function ThinkInk({ user, code, onLeave }: Props) {
                 {p.user.username === user.username && ' (you)'}
               </span>
               <span className="game-score">{p.score}</span>
-              {state?.phase === 'lobby' && p.ready && <span className="game-tick">✓</span>}
+              {state?.phase === 'lobby' && p.ready && (
+                <span className="game-tick" aria-label="ready">
+                  <CheckIcon />
+                </span>
+              )}
             </div>
           ))}
 
@@ -424,7 +435,10 @@ export function ThinkInk({ user, code, onLeave }: Props) {
                   m.content
                 ) : (
                   <>
-                    <span className="game-msg-author" style={{ color: m.user?.color }}>
+                    <span
+                      className="game-msg-author"
+                      style={{ color: m.user ? onPaper(m.user.color) : undefined }}
+                    >
                       {m.user?.username}
                     </span>
                     {m.content}

@@ -4,14 +4,28 @@ import gsap from 'gsap'
 import { io, Socket } from 'socket.io-client'
 import { ChatFeed } from '../components/ChatFeed'
 import { BrushHint } from '../components/BrushHint'
-import { CursorIcon, FillIcon, InfoIcon } from '../components/icons'
+import {
+  BackIcon,
+  ChatIcon,
+  CloseIcon,
+  CursorIcon,
+  EraserIcon,
+  FillIcon,
+  InfoIcon,
+  PencilIcon,
+  PinIcon,
+  RedoIcon,
+  UndoIcon,
+} from '../components/icons'
 import { InkMark } from '../components/InkMark'
 import { InfoPanel } from '../components/InfoPanel'
+import { Wordmark } from '../components/Wordmark'
 import { useBrushSize } from '../hooks/useBrushSize'
 import { useLongPress } from '../hooks/useLongPress'
-import { prefersReducedMotion } from '../lib/motion'
+import { peelOff, prefersReducedMotion, setDown, stickOn } from '../lib/motion'
 import { floodFill } from '../lib/fill'
 import { isTypingTarget } from '../lib/keys'
+import { INKS, onFill, onPaper } from '../lib/palette'
 import { SERVER_URL } from '../lib/server'
 import type { Message, User } from '../types'
 
@@ -57,11 +71,8 @@ interface RemoteCursor {
 
 type Tool = 'select' | 'pen' | 'eraser' | 'fill' | 'pin'
 
-const COLORS = [
-  '#111111', '#ff4757', '#ff6b2b', '#ffd32a',
-  '#2ed573', '#1e90ff', '#a55eea', '#ff6eb4',
-  '#ffffff', '#8395a7',
-]
+/** The eraser's preview colour: pencil grey, since white would vanish on the sheet. */
+const ERASER_PREVIEW = '#8d8780'
 
 const TOOLS: {
   id: Tool
@@ -77,10 +88,16 @@ const TOOLS: {
     key: 'V',
     hint: 'Drag to pan the canvas, and click pins to open or close their comments.',
   },
-  { id: 'pen', icon: '✏', name: 'Pen', key: 'P', hint: 'Freehand strokes in the colour in hand.' },
+  {
+    id: 'pen',
+    icon: <PencilIcon />,
+    name: 'Pen',
+    key: 'P',
+    hint: 'Freehand strokes in the colour in hand.',
+  },
   {
     id: 'eraser',
-    icon: '⬜',
+    icon: <EraserIcon />,
     name: 'Eraser',
     key: 'E',
     hint: 'Paints the canvas back to white, five times the brush width.',
@@ -94,7 +111,7 @@ const TOOLS: {
   },
   {
     id: 'pin',
-    icon: '◎',
+    icon: <PinIcon />,
     name: 'Pin',
     hint: 'Click anywhere to leave a comment anchored to that spot.',
   },
@@ -176,7 +193,11 @@ function snapshot(canvas: HTMLCanvasElement) {
   return canvas.toDataURL('image/png')
 }
 
-/** A pin pops in when it arrives, and its bubble springs open on click. */
+/**
+ * A drawing pin with a sticky note on it. The pin is pushed into the sheet
+ * when it arrives, the note is pressed on when opened, and a deleted pin is
+ * pulled back out.
+ */
 function PinMarker({
   pin,
   open,
@@ -199,27 +220,41 @@ function PinMarker({
   useEffect(() => {
     if (!leaving) return
     const ctx = gsap.context(() => {
-      // Duration 0 under reduced motion still fires onComplete on the next
-      // tick, which keeps the removal out of the effect body either way.
+      // Pulled up out of the paper. Duration 0 under reduced motion still
+      // fires onComplete on the next tick, which keeps the removal out of the
+      // effect body either way.
       gsap.to(ref.current, {
-        scale: 0,
+        y: -26,
+        rotation: 18,
         opacity: 0,
-        duration: prefersReducedMotion() ? 0 : 0.28,
-        ease: 'back.in(2)',
+        duration: prefersReducedMotion() ? 0 : 0.3,
+        ease: 'power2.in',
         onComplete: () => onGone(pin.id),
       })
     }, ref)
     return () => ctx.revert()
   }, [leaving, onGone, pin.id])
 
+  // Pushed in: it comes down point first, then gives a little as it seats.
   useEffect(() => {
     if (prefersReducedMotion()) return
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        ref.current,
-        { scale: 0, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.45, ease: 'back.out(2.4)', clearProps: 'opacity,transform' }
-      )
+      gsap
+        .timeline()
+        .fromTo(
+          ref.current,
+          { y: -24, scale: 1.25, opacity: 0, transformOrigin: '50% 100%' },
+          { y: 0, scale: 1, opacity: 1, duration: 0.26, ease: 'power3.in' }
+        )
+        .to(ref.current, {
+          scaleY: 0.86,
+          scaleX: 1.08,
+          duration: 0.07,
+          yoyo: true,
+          repeat: 1,
+          ease: 'power1.out',
+          clearProps: 'opacity,transform',
+        })
     }, ref)
     return () => ctx.revert()
   }, [])
@@ -227,19 +262,7 @@ function PinMarker({
   useEffect(() => {
     if (!open || prefersReducedMotion()) return
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        bubbleRef.current,
-        { opacity: 0, x: -10, scale: 0.9 },
-        {
-          opacity: 1,
-          x: 0,
-          scale: 1,
-          duration: 0.26,
-          ease: 'back.out(2)',
-          transformOrigin: 'left center',
-          clearProps: 'opacity,transform',
-        }
-      )
+      stickOn(bubbleRef.current)
     }, bubbleRef)
     return () => ctx.revert()
   }, [open])
@@ -254,11 +277,11 @@ function PinMarker({
         onToggle()
       }}
     >
-      <div className="pin-dot" style={{ background: pin.user.color }} />
+      <div className="pin-dot" style={{ ['--pin' as string]: pin.user.color }} />
       {open && (
         <div className="pin-bubble" ref={bubbleRef}>
           <div className="pin-bubble-head">
-            <span className="pin-author" style={{ color: pin.user.color }}>
+            <span className="pin-author" style={{ color: onPaper(pin.user.color) }}>
               {pin.user.username}
             </span>
             <button
@@ -270,7 +293,7 @@ function PinMarker({
                 onDelete(pin.id)
               }}
             >
-              ×
+              <CloseIcon size={13} />
             </button>
           </div>
           <p className="pin-text">{pin.text}</p>
@@ -280,7 +303,10 @@ function PinMarker({
   )
 }
 
-/** Slides in, holds, slides out — then tells the parent to drop it. */
+/**
+ * A note torn off a pad: it slides in askew and settles, holds, then is
+ * peeled off and flicked away — and only then tells the parent to drop it.
+ */
 function Toast({
   msg,
   onOpen,
@@ -304,27 +330,27 @@ function Toast({
         .timeline()
         .fromTo(
           el,
-          { opacity: 0, x: 30, scale: 0.95 },
-          { opacity: 1, x: 0, scale: 1, duration: 0.34, ease: 'back.out(1.6)' }
+          { opacity: 0, x: 44, rotation: 9, transformOrigin: 'top right' },
+          { opacity: 1, x: 0, rotation: 0, duration: 0.42, ease: 'back.out(1.5)' }
         )
-        .to(el, {
-          opacity: 0,
-          x: 30,
-          duration: 0.3,
-          ease: 'power2.in',
-          delay: TOAST_MS / 1000,
-          onComplete: () => onExpire(msg.id),
-        })
+        .add(peelOff(el, { delay: TOAST_MS / 1000, onComplete: () => onExpire(msg.id) }))
     }, ref)
     return () => ctx.revert()
   }, [msg.id, onExpire])
 
+  // The torn edge is a clip-path, which would clip a box-shadow too, so the
+  // button carries the shadow (as a filter) and the paper inside is clipped.
   return (
     <button ref={ref} className="collab-toast" onClick={onOpen} title="Open chat (M)">
-      <span className="toast-author" style={{ color: msg.user?.color }}>
-        {msg.user?.username}
+      <span className="toast-paper">
+        <span
+          className="toast-author"
+          style={{ color: msg.user ? onPaper(msg.user.color) : undefined }}
+        >
+          {msg.user?.username}
+        </span>
+        <span className="toast-text">{msg.content}</span>
       </span>
-      <span className="toast-text">{msg.content}</span>
     </button>
   )
 }
@@ -791,15 +817,11 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
     return () => clearInterval(timer)
   }, [])
 
-  // The toolbar drops in once the canvas is up.
+  // The toolbar is set down like a strip of card once the canvas is up.
   useEffect(() => {
     if (full !== null || prefersReducedMotion()) return
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        toolbarRef.current,
-        { y: -70, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6, ease: 'back.out(1.5)', clearProps: 'opacity,transform' }
-      )
+      setDown(toolbarRef.current, { lift: 70, tilt: -2.5 })
     }, toolbarRef)
     return () => ctx.revert()
   }, [full])
@@ -821,11 +843,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
   useEffect(() => {
     if (full === null || prefersReducedMotion()) return
     const ctx = gsap.context(() => {
-      gsap.fromTo(
-        fullCardRef.current,
-        { y: 20, scale: 0.95, opacity: 0 },
-        { y: 0, scale: 1, opacity: 1, duration: 0.5, ease: 'power3.out', clearProps: 'opacity,transform' }
-      )
+      setDown(fullCardRef.current)
     }, fullCardRef)
     return () => ctx.revert()
   }, [full])
@@ -834,11 +852,9 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
     return (
       <div className="welcome-page">
         <div className="welcome-card canvas-full-card" ref={fullCardRef}>
-          <div className="welcome-logo">
-            <InkMark size={64} />
-            <span className="logo-ink">Ink</span>
-            <span className="logo-sync">Sync</span>
-          </div>
+          <span className="tape tape-left" aria-hidden="true" />
+          <span className="tape tape-right" aria-hidden="true" />
+          <Wordmark />
           <p className="welcome-sub">
             {isPrivate ? `canvas ${canvasId} is full` : 'the live canvas is full'}
           </p>
@@ -846,7 +862,11 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
             All {full} spots are taken right now. Hang back a moment and try again, or
             {isPrivate ? ' start a canvas of your own' : ' make a private canvas instead'}.
           </p>
-          <button className="join-btn" onClick={onLeave} style={{ borderColor: user.color, color: user.color }}>
+          <button
+            className="join-btn"
+            onClick={onLeave}
+            style={{ ['--who' as string]: user.color }}
+          >
             Back
           </button>
         </div>
@@ -899,7 +919,10 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
             style={{ left: `${c.xPct}%`, top: `${c.yPct}%`, color: c.user.color }}
           >
             <CursorIcon size={18} />
-            <span className="remote-cursor-name" style={{ background: c.user.color }}>
+            <span
+              className="remote-cursor-name"
+              style={{ background: c.user.color, color: onFill(c.user.color) }}
+            >
               {c.user.username}
             </span>
           </div>
@@ -939,7 +962,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
         hint={hint}
         width={tool === 'eraser' ? size * 5 : size}
         label={size}
-        color={tool === 'eraser' ? '#8395a7' : color}
+        color={tool === 'eraser' ? ERASER_PREVIEW : color}
       />
 
       {/* Unread chat, only while the panel is closed */}
@@ -958,8 +981,8 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
 
       {/* Floating toolbar */}
       <div className="collab-toolbar" ref={toolbarRef}>
-        <button className="collab-ctrl-btn" onClick={onLeave} title="Back">
-          ←
+        <button className="collab-ctrl-btn" onClick={onLeave} title="Back" aria-label="Back">
+          <BackIcon />
         </button>
         <InkMark size={34} />
         <span className="collab-logo">InkSync</span>
@@ -978,11 +1001,16 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
           </button>
         ))}
 
-        <button className="collab-ctrl-btn" onClick={undo} title="Undo (Ctrl+Z)">
-          ↶
+        <button className="collab-ctrl-btn" onClick={undo} title="Undo (Ctrl+Z)" aria-label="Undo">
+          <UndoIcon />
         </button>
-        <button className="collab-ctrl-btn" onClick={redo} title="Redo (Ctrl+Shift+Z)">
-          ↷
+        <button
+          className="collab-ctrl-btn"
+          onClick={redo}
+          title="Redo (Ctrl+Shift+Z)"
+          aria-label="Redo"
+        >
+          <RedoIcon />
         </button>
 
         <button
@@ -1008,7 +1036,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
         </button>
 
         <div className="collab-swatches">
-          {COLORS.map((c) => (
+          {INKS.map((c) => (
             <button
               key={c}
               className={`collab-swatch ${c === color ? 'sel' : ''} ${
@@ -1038,7 +1066,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
             style={{
               width: Math.max(size * 0.8, 3),
               height: Math.max(size * 0.8, 3),
-              background: tool === 'eraser' ? '#888' : color,
+              background: tool === 'eraser' ? ERASER_PREVIEW : color,
               boxShadow: `0 0 0 2px ${altColor}44`,
             }}
           />
@@ -1063,8 +1091,9 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
           className={`collab-ctrl-btn ${chatOpen ? 'hi' : ''}`}
           onClick={toggleChat}
           title="Toggle chat (M)"
+          aria-label="Toggle chat"
         >
-          ✦
+          <ChatIcon />
           {unread > 0 && !chatOpen && (
             <span className="collab-unread">{unread > 9 ? '9+' : unread}</span>
           )}
@@ -1078,10 +1107,12 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
         <div className="collab-chat-head">
           <span>Chat</span>
           <kbd className="collab-kbd">M</kbd>
-          <span className="collab-chat-user" style={{ color: user.color }}>
+          <span className="collab-chat-user" style={{ color: onPaper(user.color) }}>
             {user.username}
           </span>
-          <button onClick={() => showChat(false)}>×</button>
+          <button onClick={() => showChat(false)} aria-label="Close chat">
+            <CloseIcon />
+          </button>
         </div>
         <ChatFeed messages={messages} currentUser={user} />
         <div className="text-bar collab-chat-bar">

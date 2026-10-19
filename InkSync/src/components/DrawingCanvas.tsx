@@ -1,12 +1,23 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
+import gsap from 'gsap'
 import { BrushHint } from './BrushHint'
-import { CursorIcon, FillIcon, InfoIcon } from './icons'
+import {
+  CursorIcon,
+  EraserIcon,
+  FillIcon,
+  InfoIcon,
+  PencilIcon,
+  RedoIcon,
+  UndoIcon,
+} from './icons'
 import { InfoPanel } from './InfoPanel'
 import type { ReactNode } from 'react'
 import { useBrushSize } from '../hooks/useBrushSize'
 import { useLongPress } from '../hooks/useLongPress'
 import { floodFill } from '../lib/fill'
 import { isTypingTarget } from '../lib/keys'
+import { crumple, prefersReducedMotion } from '../lib/motion'
+import { INKS } from '../lib/palette'
 
 interface Props {
   onSendDrawing: (dataUrl: string) => void
@@ -14,11 +25,19 @@ interface Props {
 
 type Tool = 'select' | 'pen' | 'eraser' | 'fill'
 
-const COLORS = [
-  '#111111', '#ff4757', '#ff6b2b', '#ffd32a',
-  '#2ed573', '#1e90ff', '#a55eea', '#ff6eb4',
-  '#ffffff', '#8395a7',
-]
+/**
+ * The sheet that was just cleared, played out over the fresh one beneath it.
+ * A cleared drawing is screwed up and thrown away; a sent one slides off
+ * toward the chat, where it is about to turn up.
+ */
+interface Scrap {
+  id: number
+  src: string
+  fate: 'crumple' | 'send'
+}
+
+/** The eraser's preview colour: pencil grey, since white would vanish on the sheet. */
+const ERASER_PREVIEW = '#8d8780'
 
 const MIN_SIZE = 1
 const MAX_SIZE = 24
@@ -32,10 +51,16 @@ const TOOLS: { id: Tool; icon: ReactNode; name: string; key: string; hint: strin
     key: 'V',
     hint: 'Pointer only — nothing you do on the canvas leaves a mark.',
   },
-  { id: 'pen', icon: '✏', name: 'Pen', key: 'P', hint: 'Freehand strokes in the colour in hand.' },
+  {
+    id: 'pen',
+    icon: <PencilIcon />,
+    name: 'Pen',
+    key: 'P',
+    hint: 'Freehand strokes in the colour in hand.',
+  },
   {
     id: 'eraser',
-    icon: '◻',
+    icon: <EraserIcon />,
     name: 'Eraser',
     key: 'E',
     hint: 'Paints the canvas back to white, five times the brush width.',
@@ -54,14 +79,16 @@ const HISTORY_LIMIT = 30
 export function DrawingCanvas({ onSendDrawing }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [tool, setTool] = useState<Tool>('pen')
-  const [color, setColor] = useState('#111111')
+  const [color, setColor] = useState(INKS[0])
   const [altColor, setAltColor] = useState(DEFAULT_ALT_COLOR)
   const [infoOpen, setInfoOpen] = useState(false)
   const isDrawing = useRef(false)
   const lastPos = useRef({ x: 0, y: 0 })
-  const strokeColor = useRef('#111111')
+  const strokeColor = useRef(INKS[0])
   const undoStack = useRef<ImageData[]>([])
   const redoStack = useRef<ImageData[]>([])
+  const [scrap, setScrap] = useState<Scrap | null>(null)
+  const scrapRef = useRef<HTMLDivElement>(null)
 
   // Right-click sets the second colour on a mouse; long-press does it on touch.
   const altPress = useLongPress<string>((c) => setAltColor(c))
@@ -226,11 +253,36 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [step])
 
-  const clearCanvas = (recordHistory = true) => {
+  useEffect(() => {
+    if (!scrap) return
+    const ctx = gsap.context(() => {
+      const done = () => setScrap(null)
+      if (scrap.fate === 'crumple') {
+        crumple(scrapRef.current, { onComplete: done })
+        return
+      }
+      gsap.to(scrapRef.current, {
+        yPercent: 65,
+        scale: 0.5,
+        rotation: -4,
+        opacity: 0,
+        duration: 0.45,
+        ease: 'power2.in',
+        onComplete: done,
+      })
+    }, scrapRef)
+    return () => ctx.revert()
+  }, [scrap])
+
+  /** `snapshot` saves re-encoding the sheet when the caller already has it. */
+  const clearCanvas = (recordHistory = true, fate: Scrap['fate'] = 'crumple', snapshot?: string) => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+    if (!prefersReducedMotion()) {
+      setScrap({ id: Date.now(), src: snapshot ?? canvas.toDataURL('image/png'), fate })
+    }
     if (recordHistory) pushHistory()
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -239,8 +291,9 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
   const handleSend = () => {
     const canvas = canvasRef.current
     if (!canvas) return
-    onSendDrawing(canvas.toDataURL('image/png'))
-    clearCanvas()
+    const dataUrl = canvas.toDataURL('image/png')
+    onSendDrawing(dataUrl)
+    clearCanvas(true, 'send', dataUrl)
     redoStack.current.length = 0
   }
 
@@ -254,6 +307,11 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
           className="drawing-canvas"
           style={{ cursor: tool === 'select' ? 'default' : 'crosshair' }}
         />
+        {scrap && (
+          <div key={scrap.id} ref={scrapRef} className="canvas-scrap" aria-hidden="true">
+            <img src={scrap.src} alt="" />
+          </div>
+        )}
       </div>
 
       <InfoPanel open={infoOpen} onClose={() => setInfoOpen(false)} tools={TOOLS} full={false} />
@@ -262,7 +320,7 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
         hint={hint}
         width={tool === 'eraser' ? size * 5 : size}
         label={size}
-        color={tool === 'eraser' ? '#8395a7' : color}
+        color={tool === 'eraser' ? ERASER_PREVIEW : color}
       />
 
       <div className="toolbar">
@@ -301,7 +359,7 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
         </button>
 
         <div className="color-swatches">
-          {COLORS.map((c) => (
+          {INKS.map((c) => (
             <button
               key={c}
               className={`swatch ${c === color ? 'selected' : ''} ${
@@ -331,7 +389,7 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
             style={{
               width: Math.max(size, 3),
               height: Math.max(size, 3),
-              background: tool === 'eraser' ? '#ccc' : color,
+              background: tool === 'eraser' ? ERASER_PREVIEW : color,
             }}
           />
           <input
@@ -350,15 +408,17 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
           className="clear-btn"
           onClick={() => step(undoStack.current, redoStack.current)}
           title="Undo (Ctrl+Z)"
+          aria-label="Undo"
         >
-          ↶
+          <UndoIcon />
         </button>
         <button
           className="clear-btn"
           onClick={() => step(redoStack.current, undoStack.current)}
           title="Redo (Ctrl+Shift+Z)"
+          aria-label="Redo"
         >
-          ↷
+          <RedoIcon />
         </button>
         <button className="clear-btn" onClick={() => clearCanvas()}>
           Clear
