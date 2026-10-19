@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { onPaper } from '../lib/palette'
 import type { TurnRecord } from '../pages/ThinkInk'
 
 interface Props {
@@ -53,7 +54,10 @@ function buildSeries(history: TurnRecord[]): Series[] {
       const row = h.standings.find((s) => s.id === id)
       points.push(row ? row.score : null)
     }
-    return { id, name: info.name, color: info.color, dash: DASHES[i % DASHES.length], points }
+    // Lines are marks, not text, so 3:1 against the paper is enough — but a
+    // marigold player at full strength would barely register on the sheet.
+    const color = onPaper(info.color, 3)
+    return { id, name: info.name, color, dash: DASHES[i % DASHES.length], points }
   })
 }
 
@@ -126,7 +130,7 @@ export function ScoreChart({ history, focusId = null, onFocus, height = 150 }: P
               x2={W - PAD.right}
               y1={y(v)}
               y2={y(v)}
-              stroke="var(--border)"
+              stroke="var(--rule)"
               strokeWidth="1"
             />
             <text x={PAD.left - 5} y={y(v) + 3} className="chart-axis" textAnchor="end">
@@ -141,7 +145,7 @@ export function ScoreChart({ history, focusId = null, onFocus, height = 150 }: P
             x2={x(hover)}
             y1={PAD.top - 4}
             y2={H - PAD.bottom}
-            stroke="var(--border-light)"
+            stroke="var(--rule-strong)"
             strokeWidth="1"
           />
         )}
@@ -176,7 +180,7 @@ export function ScoreChart({ history, focusId = null, onFocus, height = 150 }: P
               cy={y(v)}
               r="4"
               fill={s.color}
-              stroke="var(--surface)"
+              stroke="var(--paper)"
               strokeWidth="2"
               opacity={dim ? 0.25 : 1}
             />

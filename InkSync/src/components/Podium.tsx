@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import gsap from 'gsap'
 import { Avatar } from './Avatar'
+import { CrownIcon } from './icons'
 import { normalizeAvatar } from '../lib/avatar'
 import { prefersReducedMotion } from '../lib/motion'
 import type { FinalStanding } from '../pages/ThinkInk'
@@ -79,7 +80,11 @@ export function Podium({ standings, resultAt }: Props) {
         return (
           <div className="podium-col" key={p.id}>
             <div className={`podium-figure ${place === 1 ? 'first' : ''}`}>
-              {place === 1 && <span className="podium-crown">♛</span>}
+              {place === 1 && (
+                <span className="podium-crown">
+                  <CrownIcon size={20} />
+                </span>
+              )}
               <Avatar
                 color={p.user.color}
                 avatar={normalizeAvatar(p.user.avatar)}
@@ -89,9 +94,10 @@ export function Podium({ standings, resultAt }: Props) {
               <span className="podium-name">{p.user.username}</span>
               <span className="podium-score">{p.score}</span>
             </div>
+            {/* backgroundColor, not background, so the stylesheet's grain survives. */}
             <div
               className={`podium-block place-${place}`}
-              style={{ height: HEIGHTS[i], background: p.user.color }}
+              style={{ height: HEIGHTS[i], backgroundColor: p.user.color }}
             >
               <span className="podium-place">{place}</span>
             </div>

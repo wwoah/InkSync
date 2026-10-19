@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import gsap from 'gsap'
-import { InkMark } from '../components/InkMark'
+import { Wordmark } from '../components/Wordmark'
 import { Carousel } from '../components/Carousel'
 import { AvatarPicker } from '../components/AvatarPicker'
 import { Avatar } from '../components/Avatar'
+import { BulbIcon, LockIcon, SheetIcon } from '../components/icons'
 import { DEFAULT_AVATAR, normalizeAvatar } from '../lib/avatar'
 import { saveProfile } from '../lib/profile'
-import { prefersReducedMotion } from '../lib/motion'
+import { prefersReducedMotion, setDown } from '../lib/motion'
+import { PLAYER_COLORS, onPaper } from '../lib/palette'
 import type { User } from '../types'
 
 interface Props {
@@ -15,11 +18,6 @@ interface Props {
   onEnterRoom: (user: User, roomId: string) => void
   onEnterGame: (user: User, code: string) => void
 }
-
-const COLOR_OPTIONS = [
-  '#ff4757', '#ff6b2b', '#ffd32a', '#2ed573',
-  '#1e90ff', '#a55eea', '#ff6eb4', '#ffffff',
-]
 
 function randomCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase()
@@ -40,7 +38,7 @@ function ChoiceCard({
   onEnterOpen,
   onEnterCode,
 }: {
-  icon: string
+  icon: ReactNode
   title: string
   desc: string
   /** Used in the buttons: "Create Room", "Join Canvas", and so on. */
@@ -184,24 +182,34 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }
     initialUser ? 'destination' : 'identity',
   )
   const [username, setUsername] = useState(initialUser?.username ?? '')
-  const [color, setColor] = useState(initialUser?.color ?? COLOR_OPTIONS[4])
+  const [color, setColor] = useState(initialUser?.color ?? PLAYER_COLORS[4])
   const [avatar, setAvatar] = useState(() =>
     initialUser?.avatar ? normalizeAvatar(initialUser.avatar) : DEFAULT_AVATAR
   )
   const cardRef = useRef<HTMLDivElement>(null)
   const stepRef = useRef<HTMLDivElement>(null)
 
-  // The card arrives once; its contents re-stagger on every step change.
-  // These are fromTo, not from: a from-tween ends at whatever the element
-  // measures when it is built, which under StrictMode's double-invoked effects
-  // can be the previous tween's opacity: 0 — leaving the element stuck hidden.
+  // The card is set down once, then taped; its contents re-stagger on every
+  // step change. These are fromTo, not from: a from-tween ends at whatever the
+  // element measures when it is built, which under StrictMode's double-invoked
+  // effects can be the previous tween's opacity: 0 — leaving it stuck hidden.
   useEffect(() => {
     if (prefersReducedMotion()) return
     const ctx = gsap.context(() => {
+      setDown(cardRef.current)
       gsap.fromTo(
-        cardRef.current,
-        { y: 24, scale: 0.96, opacity: 0 },
-        { y: 0, scale: 1, opacity: 1, duration: 0.55, ease: 'power3.out', clearProps: 'opacity,transform' }
+        '.tape',
+        { opacity: 0, scale: 1.25, y: -8 },
+        {
+          opacity: 1,
+          scale: 1,
+          y: 0,
+          duration: 0.3,
+          stagger: 0.12,
+          delay: 0.42,
+          ease: 'power2.out',
+          clearProps: 'opacity,transform',
+        }
       )
     }, cardRef)
     return () => ctx.revert()
@@ -239,11 +247,9 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }
   return (
     <div className="welcome-page">
       <div className="welcome-card" ref={cardRef}>
-        <div className="welcome-logo">
-          <InkMark size={64} />
-          <span className="logo-ink">Ink</span>
-          <span className="logo-sync">Sync</span>
-        </div>
+        <span className="tape tape-left" aria-hidden="true" />
+        <span className="tape tape-right" aria-hidden="true" />
+        <Wordmark />
         <p className="welcome-sub">draw and share live.</p>
 
         <div className="welcome-step" ref={stepRef}>
@@ -267,7 +273,7 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }
             <div className="field">
               <label className="field-label">your colour</label>
               <div className="color-row">
-                {COLOR_OPTIONS.map((c) => (
+                {PLAYER_COLORS.map((c) => (
                   <button
                     key={c}
                     className={`welcome-swatch ${c === color ? 'selected' : ''}`}
@@ -282,7 +288,7 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }
               className="join-btn"
               onClick={handleContinue}
               disabled={!trimmed}
-              style={{ borderColor: color, color }}
+              style={{ ['--who' as string]: color }}
             >
               Continue
             </button>
@@ -291,7 +297,7 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }
           <>
             <div className="welcome-identity">
               <Avatar color={color} avatar={avatar} size={28} />
-              <span className="identity-name" style={{ color }}>{trimmed}</span>
+              <span className="identity-name" style={{ color: onPaper(color) }}>{trimmed}</span>
               <button
                 className="identity-edit"
                 onClick={() => setStep('identity')}
@@ -310,7 +316,7 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }
                     label: 'Canvas',
                     content: (
                       <ChoiceCard
-                        icon="◈"
+                        icon={<SheetIcon />}
                         title="Canvas"
                         desc="One big shared surface. Draw together, pin comments, chat."
                         noun="Canvas"
@@ -325,7 +331,7 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }
                     label: 'Private Room',
                     content: (
                       <ChoiceCard
-                        icon="◇"
+                        icon={<LockIcon />}
                         title="Private Room"
                         desc="Draw and chat in a private space with a room code."
                         noun="Room"
@@ -338,7 +344,7 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }
                     label: 'ThinkInk',
                     content: (
                       <ChoiceCard
-                        icon="◐"
+                        icon={<BulbIcon />}
                         title="ThinkInk"
                         desc="One player draws a secret word, everyone else races to guess it."
                         noun="Game"

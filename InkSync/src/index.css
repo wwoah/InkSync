@@ -4,28 +4,104 @@
   padding: 0;
 }
 
+/* ──────────────────────────────────────────
+   PAPER & INK
+   Everything is a sheet of something lying on a desk. Stock, ink, depth and
+   texture are all defined here, so the rest of the file only has to say what
+   a thing is cut from.
+────────────────────────────────────────── */
+
 :root {
-  --bg: #0b0b0e;
-  --surface: #111116;
-  --surface-2: #18181f;
-  --border: #24242e;
-  --border-light: #2e2e3a;
-  --accent: #6c54f5;
-  --accent-dim: rgba(108, 84, 245, 0.18);
-  --text: #ddddf0;
-  --text-muted: #66668a;
-  --text-dim: #44445a;
-  --canvas-bg: #ffffff;
-  --radius: 8px;
+  /* Stock */
+  --desk: #e8e0cf;
+  --paper: #fbf8f1;
+  --paper-warm: #f4eee2;
+  --paper-shade: #ebe3d3;
+  --card: #fffdf8;
+  --sticky: #fdf0a0;
+  --manila: #f1e2bf;
+
+  /* Ink. Text never goes below --ink-faint, which still clears 3.5:1 on paper. */
+  --ink: #2a251f;
+  --ink-soft: #625a4e;
+  --ink-faint: #81776a;
+  --rule: rgba(74, 58, 38, 0.15);
+  --rule-strong: rgba(74, 58, 38, 0.3);
+
+  /* Pens */
+  --blue: #2c4fa8;
+  --blue-deep: #1d3577;
+  --blue-wash: rgba(44, 79, 168, 0.1);
+  --red: #c4432f;
+  --green: #3c8a4e;
+  --amber: #8a5a0a;
+  --gold: #f0c23b;
+  --marker: #ffe36e;
+  --marker-soft: rgba(255, 218, 74, 0.5);
+
+  /* Notebook lines */
+  --ruled: rgba(70, 118, 196, 0.22);
+  --margin-line: rgba(204, 82, 72, 0.42);
+
+  /* Depth: warm, close shadows. Paper rests on things; it never glows. */
+  --lift-1: 0 1px 1px rgba(70, 50, 25, 0.12), 0 2px 4px -2px rgba(70, 50, 25, 0.16);
+  --lift-2: 0 1px 1px rgba(70, 50, 25, 0.1), 0 4px 8px -3px rgba(70, 50, 25, 0.18),
+    0 14px 26px -14px rgba(70, 50, 25, 0.34);
+  --lift-3: 0 2px 2px rgba(70, 50, 25, 0.08), 0 10px 18px -8px rgba(70, 50, 25, 0.22),
+    0 30px 50px -22px rgba(70, 50, 25, 0.42);
+
+  /* Freehand outlines: unequal elliptical corners read as a box drawn by
+     hand. Two variants, so neighbouring buttons never wobble in step. */
+  --wobble: 255px 14px 225px 14px / 14px 225px 14px 255px;
+  --wobble-alt: 14px 225px 14px 255px / 255px 14px 225px 14px;
+  --radius: 3px;
+
+  /* Type. Shantell Sans is the hand; its informality and bounce axes are
+     driven per element through --infm and --bnce. Courier Prime is the
+     typewriter, for codes, labels and numbers that should line up. */
+  --hand: 'Shantell Sans Variable', 'Segoe UI', system-ui, sans-serif;
+  --type: 'Courier Prime', 'Courier New', ui-monospace, monospace;
+  --infm: 18;
+  --bnce: 0;
+
+  /* Paper grain: fine brown speckle, generated rather than shipped as an
+     image. The alpha channel is driven by the noise itself, so it only ever
+     darkens — the stock colour underneath never greys out. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .27 0 0 0 0 .2 0 0 0 0 .12 .62 0 0 0 -.24'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  /* Cloudy unevenness for the desk, at a scale too broad to tile visibly. */
+  --mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.005' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .38 0 0 0 0 .2 .75 0 0 0 -.32'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
+  /* Pencil strokes for dividers. They stretch to fit without thickening. */
+  --pencil-v: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 24' preserveAspectRatio='none'%3E%3Cpath d='M2.2 1c-.7 3.6.6 6.4-.1 10.6S2.6 18.8 1.9 23' fill='none' stroke='%235b5246' stroke-opacity='.55' stroke-width='1.3' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  --pencil-h: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 4' preserveAspectRatio='none'%3E%3Cpath d='M1 2.4C40 1.2 80 3 120 2.1s90-1.3 130 .2c20 .7 35 .3 49-.4' fill='none' stroke='%235b5246' stroke-opacity='.4' stroke-width='1.2' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  /* A circle drawn in one go, the ends overshooting where they meet. */
+  --ring: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M22 4.6C11.4 3.6 4.8 10.8 4.6 19.8c-.2 9.3 6.8 15.8 15.6 15.8 9.2 0 15.4-7 15.2-15.9C35.2 11 28.9 4.8 19.3 5.5c-3 .2-5.5 1.1-7.8 2.6' fill='none' stroke='%232a251f' stroke-width='2.3' stroke-linecap='round'/%3E%3C/svg%3E");
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.8 6 6.2l4.6-4.5' fill='none' stroke='%23625a4e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
   font-size: 14px;
   line-height: 1.5;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--hand);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Variable axes are set as one property, so every element re-reads the two
+   custom properties and a component only has to change the one it cares about. */
+* {
+  font-variation-settings: 'INFM' var(--infm), 'BNCE' var(--bnce);
 }
 
 html, body {
   height: 100%;
   overflow: hidden;
+}
+
+body {
+  background: var(--desk);
+}
+
+::selection {
+  background: var(--marker-soft);
+  color: inherit;
 }
 
 #root {
@@ -41,12 +117,47 @@ html, body {
 button {
   font-family: inherit;
   font-size: inherit;
+  color: inherit;
   cursor: pointer;
 }
 
-input {
+input,
+textarea,
+select {
   font-family: inherit;
   font-size: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px dashed var(--blue);
+  outline-offset: 3px;
+}
+
+/* Every page sits on the desk. */
+.welcome-page,
+.chat-page,
+.game-page,
+.collab-root {
+  background-color: var(--desk);
+  background-image: var(--grain), var(--mottle);
+}
+
+/* Masking tape: translucent, with torn ends. Whoever holds it positions it.
+   No shadow — the clip-path that tears the ends would clip one anyway, and
+   real tape lies flat. */
+.tape {
+  position: absolute;
+  z-index: 2;
+  width: 92px;
+  height: 26px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 30%,
+      rgba(255, 255, 255, 0.14) 70%, rgba(255, 255, 255, 0)),
+    rgba(226, 211, 168, 0.7);
+  clip-path: polygon(3% 0, 97% 0, 100% 14%, 97% 30%, 100% 46%, 97% 62%, 100% 78%, 97% 100%,
+    3% 100%, 0 86%, 3% 70%, 0 54%, 3% 38%, 0 22%);
+  pointer-events: none;
 }
 
 /* ──────────────────────────────────────────
@@ -62,41 +173,117 @@ input {
   justify-content: center;
   /* Three destinations make a tall card; let it scroll on short screens
      rather than clipping against the page's hidden overflow. */
-  padding: 24px 16px;
+  padding: 32px 16px;
   overflow-y: auto;
-  background: var(--bg);
-  background-image:
-    radial-gradient(ellipse 60% 50% at 30% 60%, rgba(108, 84, 245, 0.12) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 75% 35%, rgba(255, 110, 180, 0.08) 0%, transparent 60%);
+  /* Tape tips and the sheet underneath may poke past the edge on a phone.
+     Clip them rather than let them open a sideways scroll. */
+  overflow-x: hidden;
 }
 
+/* A stack of two sheets. Both are pseudo-elements in the card's own
+   stacking context: as the card's background the face would be painted
+   beneath any negative-z layer, and GSAP's transform during the entrance
+   would reshuffle the order mid-flight. Isolated, the order never changes. */
 .welcome-card {
+  position: relative;
+  isolation: isolate;
   width: min(500px, 100%);
   flex-shrink: 0;
   margin: auto;
-  padding: 44px 40px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  padding: 46px 40px 38px;
   display: flex;
   flex-direction: column;
   gap: 28px;
-  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5);
 }
 
-.welcome-logo {
-  font-size: 36px;
-  font-weight: 800;
-  letter-spacing: -1px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.welcome-card::before,
+.welcome-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* The sheet underneath, knocked askew. */
+.welcome-card::before {
+  z-index: -2;
+  background: var(--paper-warm) var(--grain);
+  box-shadow: var(--lift-2);
+  rotate: 2.2deg;
+  translate: 5px 4px;
+}
+
+/* The face. */
+.welcome-card::after {
+  z-index: -1;
+  background: var(--paper) var(--grain);
+  box-shadow: var(--lift-3);
+}
+
+.welcome-card > .tape-left {
+  top: -6px;
+  left: -30px;
+  rotate: -38deg;
+}
+
+.welcome-card > .tape-right {
+  top: -6px;
+  right: -30px;
+  rotate: 41deg;
 }
 
 /* Layout-transparent wrapper: it exists to give GSAP something to stagger. */
 .welcome-step {
   display: contents;
+}
+
+.welcome-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  line-height: 1;
+}
+
+.logo-word {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  padding-bottom: 4px;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  --infm: 100;
+  --bnce: 40;
+}
+
+.logo-ink {
+  color: var(--ink);
+}
+
+.logo-sync {
+  color: var(--blue);
+}
+
+/* A pen stroke under the name that writes itself in on arrival. */
+.logo-swash {
+  position: absolute;
+  left: 0;
+  bottom: -11px;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.logo-swash path {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0.85;
+  animation: pen-stroke 0.75s 0.6s cubic-bezier(0.6, 0.05, 0.3, 1) forwards;
 }
 
 /* The logo animates itself — no script drives it.
@@ -109,7 +296,7 @@ input {
 .ink-mark {
   position: relative;
   display: inline-block;
-  color: var(--accent);
+  color: var(--blue);
   flex-shrink: 0;
 }
 
@@ -148,7 +335,7 @@ input {
 }
 
 /* The art is black on transparent, so it is used as a mask over a painted fill.
-   That is what lets it take the accent colour instead of vanishing on a dark UI. */
+   That is what lets it take the ink colour of whatever page it sits on. */
 .ink-mark-art {
   position: absolute;
   inset: 0;
@@ -176,102 +363,248 @@ input {
   }
 }
 
-.logo-ink {
-  color: var(--text);
-}
-
-.logo-sync {
-  color: var(--accent);
-}
-
+/* Typed, like the strapline on a letterhead. */
 .welcome-sub {
-  margin-top: -18px;
-  font-size: 12px;
-  color: var(--text-muted);
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  margin-top: -14px;
+  font-family: var(--type);
+  font-size: 13px;
+  color: var(--ink-soft);
+  letter-spacing: 0.3px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
+/* Labels are typed, like the printed prompts on a form filled in by hand. */
 .field-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--text-muted);
-  font-weight: 600;
+  font-family: var(--type);
+  font-size: 12.5px;
+  color: var(--ink-soft);
 }
 
+/* Writing on the line. A highlighter stroke slides in under it on focus. */
 .field-input {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  color: var(--text);
-  font-size: 14px;
+  background-color: transparent;
+  background-image: linear-gradient(rgba(255, 218, 74, 0.38), rgba(255, 218, 74, 0.38));
+  background-repeat: no-repeat;
+  background-position: 0 86%;
+  background-size: 0% 30%;
+  border: none;
+  border-bottom: 1.5px solid var(--ink-faint);
+  border-radius: 0;
+  padding: 4px 2px 6px;
+  color: var(--ink);
+  font-size: 20px;
+  --infm: 55;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background-size 0.35s ease;
 }
 
 .field-input:focus {
-  border-color: var(--accent);
+  border-bottom-color: var(--blue);
+  background-size: 100% 30%;
 }
 
 .field-input::placeholder {
-  color: var(--text-dim);
+  color: var(--ink-faint);
+  opacity: 0.8;
 }
 
 .color-row {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 10px;
   align-items: center;
+  padding: 4px 2px;
 }
 
+/* Dabs of paint, no two quite the same shape. */
 .welcome-swatch {
+  position: relative;
   width: 30px;
   height: 30px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  transition: transform 0.12s, border-color 0.12s;
-  outline: none;
   flex-shrink: 0;
+  border: none;
+  border-radius: 47% 53% 51% 49% / 56% 44% 56% 44%;
+  box-shadow:
+    inset 0 0 0 1px rgba(42, 37, 31, 0.16),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.12),
+    inset 0 2px 1px rgba(255, 255, 255, 0.35);
+  transition: transform 0.15s;
+}
+
+.welcome-swatch:nth-child(3n + 2) {
+  border-radius: 58% 42% 46% 54% / 47% 57% 43% 53%;
+}
+
+.welcome-swatch:nth-child(3n) {
+  border-radius: 42% 58% 60% 40% / 52% 40% 60% 48%;
 }
 
 .welcome-swatch:hover {
-  transform: scale(1.15);
+  transform: scale(1.12);
 }
 
 .welcome-swatch.selected {
-  border-color: rgba(255, 255, 255, 0.7);
-  transform: scale(1.18);
+  transform: scale(1.08);
 }
 
+/* Picked: circled in pen. */
+.welcome-swatch.selected::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  background: var(--ring) center / 100% 100% no-repeat;
+  animation: ring-on 0.25s ease-out;
+}
+
+/* Cut from card, with a hard shadow in the player's own colour behind it.
+   Pressing it sinks it down into that colour. */
 .join-btn {
   padding: 12px;
-  background: transparent;
-  /* Fallbacks: the inline style supplies the chosen colour, but without these
-     a lost inline style renders UA-default near-black text on a dark card. */
-  color: var(--text);
-  border: 2px solid var(--border-light);
-  border-radius: var(--radius);
-  font-size: 14px;
+  background: var(--card);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: var(--wobble);
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: 0.5px;
-  transition: background 0.15s, opacity 0.15s, transform 0.1s;
+  --infm: 60;
+  box-shadow: 4px 4px 0 var(--who, var(--blue));
+  transition: transform 0.1s, box-shadow 0.1s, opacity 0.15s;
 }
 
 .join-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
-  transform: translateY(-1px);
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--who, var(--blue));
+}
+
+.join-btn:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--who, var(--blue));
 }
 
 .join-btn:disabled {
-  opacity: 0.3;
+  opacity: 0.38;
   cursor: not-allowed;
+}
+
+/* ──────────────────────────────────────────
+   BUTTONS
+   Two kinds, used everywhere. Primary is a cut-out of blue card standing
+   proud of the page; secondary is a card label outlined in pencil. Both sink
+   level with the sheet when pressed.
+────────────────────────────────────────── */
+
+.send-drawing-btn,
+.room-btn.primary,
+.pin-confirm-btn {
+  background: var(--blue);
+  border: none;
+  color: #fdfaf2;
+  border-radius: var(--wobble);
+  box-shadow: 0 3px 0 var(--blue-deep), 0 5px 8px -4px rgba(29, 53, 119, 0.5);
+  transition: transform 0.08s, box-shadow 0.08s, filter 0.12s, opacity 0.12s;
+}
+
+.send-drawing-btn:hover:not(:disabled),
+.room-btn.primary:hover:not(:disabled),
+.pin-confirm-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.send-drawing-btn:active:not(:disabled),
+.room-btn.primary:active:not(:disabled),
+.pin-confirm-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--blue-deep), 0 1px 2px rgba(29, 53, 119, 0.4);
+}
+
+.room-btn,
+.clear-btn,
+.text-send-btn,
+.pin-cancel-btn {
+  background: var(--card);
+  border: 1.5px solid rgba(42, 37, 31, 0.5);
+  border-radius: var(--wobble-alt);
+  color: var(--ink);
+  box-shadow: 0 2px 0 var(--rule-strong);
+  transition: transform 0.08s, box-shadow 0.08s, border-color 0.12s, opacity 0.12s;
+}
+
+.room-btn:hover:not(:disabled),
+.clear-btn:hover,
+.text-send-btn:hover,
+.pin-cancel-btn:hover {
+  border-color: var(--ink);
+}
+
+.room-btn:active:not(:disabled),
+.clear-btn:active,
+.text-send-btn:active,
+.pin-cancel-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 var(--rule-strong);
+}
+
+/* Icon buttons: bare ink until hovered. The active one gets a swipe of
+   highlighter behind it, which is always there at zero width so that it can
+   sweep in from the left when the tool changes. */
+.tool-btn,
+.collab-tool-btn,
+.collab-ctrl-btn,
+.back-btn,
+.carousel-arrow,
+.avatar-step {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--ink-soft);
+  transition: color 0.12s, background-color 0.12s, transform 0.12s;
+}
+
+.tool-btn:hover,
+.collab-tool-btn:hover,
+.collab-ctrl-btn:hover,
+.back-btn:hover,
+.carousel-arrow:hover:not(:disabled),
+.avatar-step:hover {
+  color: var(--ink);
+  background-color: var(--paper-shade);
+}
+
+.tool-btn::before,
+.collab-tool-btn::before,
+.collab-ctrl-btn::before {
+  content: '';
+  position: absolute;
+  inset: 5px 1px 6px;
+  z-index: -1;
+  background: var(--marker);
+  border-radius: 38% 62% 44% 56% / 58% 46% 54% 42%;
+  transform: rotate(-6deg) scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.24s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+
+.tool-btn.active,
+.collab-tool-btn.active,
+.collab-ctrl-btn.hi {
+  color: var(--ink);
+  background-color: transparent;
+}
+
+.tool-btn.active::before,
+.collab-tool-btn.active::before,
+.collab-ctrl-btn.hi::before {
+  transform: rotate(-6deg) scaleX(1);
 }
 
 /* ──────────────────────────────────────────
@@ -283,16 +616,16 @@ input {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
   overflow: hidden;
 }
 
-/* Header */
+/* Header: a strip across the top of the pad. */
 .chat-header {
+  position: relative;
   height: 44px;
-  padding: 0 16px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+  background: var(--paper) var(--grain);
+  box-shadow: var(--lift-1);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -302,20 +635,22 @@ input {
 
 .header-left {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
 }
 
 .header-logo {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 800;
-  color: var(--accent);
-  letter-spacing: -0.5px;
+  color: var(--blue);
+  --infm: 90;
+  --bnce: 30;
 }
 
 .header-room {
-  font-size: 12px;
-  color: var(--text-muted);
+  font-family: var(--type);
+  font-size: 13px;
+  color: var(--ink-soft);
 }
 
 .header-right {
@@ -325,23 +660,26 @@ input {
 }
 
 .header-user {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .header-count {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-family: var(--type);
+  font-size: 12px;
+  color: var(--ink-soft);
 }
 
-/* Canvas section — 2/3 of screen */
+/* Canvas section — 2/3 of screen. Its shadow falls on the notebook below. */
 .canvas-section {
+  position: relative;
+  z-index: 1;
   height: calc(66.67dvh - 44px);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  border-bottom: 2px solid var(--border);
   overflow: hidden;
+  box-shadow: 0 6px 10px -6px rgba(70, 50, 25, 0.3);
 }
 
 /* Chat section — remaining 1/3 */
@@ -365,9 +703,15 @@ input {
   min-height: 0;
 }
 
+/* The sheet. Every canvas holds plain white pixels — that is what the eraser
+   paints, what fill compares against, and what gets saved and sent — and
+   multiplies them onto paper like this, so the blank areas show the grain and
+   the ink sits in it. Isolated so the blend only ever reaches this sheet. */
 .canvas-area {
+  position: relative;
+  isolation: isolate;
   flex: 1;
-  background: #1c1c24;
+  background: var(--paper) var(--grain);
   display: flex;
   align-items: stretch;
   overflow: hidden;
@@ -379,15 +723,35 @@ input {
   display: block;
   cursor: crosshair;
   touch-action: none;
+  mix-blend-mode: multiply;
 }
 
-/* Toolbar */
+/* The outgoing sheet, laid over the fresh one while it is crumpled or sent.
+   It carries its own paper, so it reads as a sheet being balled up rather
+   than ink shrinking in mid-air. */
+.canvas-scrap {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--paper) var(--grain);
+  box-shadow: var(--lift-3);
+}
+
+.canvas-scrap img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  mix-blend-mode: multiply;
+}
+
+/* Toolbar: the pencil tray along the bottom of the sheet. */
 .toolbar {
   min-height: 50px;
   flex-wrap: wrap;
   padding: 6px 12px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  background: var(--paper-warm) var(--grain);
+  border-top: 1px solid var(--rule);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -402,72 +766,85 @@ input {
 .tool-btn {
   width: 32px;
   height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-muted);
   font-size: 14px;
-  transition: all 0.12s;
 }
 
-.tool-btn:hover {
-  border-color: var(--border-light);
-  color: var(--text);
-}
-
-.tool-btn.active {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-  color: var(--text);
-}
-
-.toolbar-divider {
-  width: 1px;
+.toolbar-divider,
+.collab-sep {
+  width: 4px;
   height: 22px;
-  background: var(--border);
+  background: var(--pencil-v) center / 100% 100% no-repeat;
   flex-shrink: 0;
   margin: 0 2px;
 }
 
 .color-swatches {
   display: flex;
-  gap: 4px;
+  gap: 5px;
   align-items: center;
 }
 
-.swatch {
+/* Paint dabs again, smaller. A faint pencil outline keeps white visible. */
+.swatch,
+.collab-swatch {
   position: relative;
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: transform 0.1s, border-color 0.1s;
-  outline: none;
+  border: none;
+  border-radius: 47% 53% 51% 49% / 56% 44% 56% 44%;
+  box-shadow:
+    inset 0 0 0 1px rgba(42, 37, 31, 0.18),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  transition: transform 0.1s;
 }
 
-.swatch:hover {
+.swatch:nth-child(3n + 2),
+.collab-swatch:nth-child(3n + 2) {
+  border-radius: 58% 42% 46% 54% / 47% 57% 43% 53%;
+}
+
+.swatch:nth-child(3n),
+.collab-swatch:nth-child(3n) {
+  border-radius: 42% 58% 60% 40% / 52% 40% 60% 48%;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+}
+
+.swatch:hover,
+.collab-swatch:hover {
   transform: scale(1.2);
 }
 
-.swatch.alt::after {
-  content: '';
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  background: var(--text);
-  box-shadow: 0 0 0 1.5px var(--surface);
+.swatch.selected,
+.collab-swatch.sel {
+  transform: scale(1.1);
 }
 
-.swatch.selected {
-  border-color: rgba(255, 255, 255, 0.7);
-  border-width: 2px;
-  transform: scale(1.15);
+/* The colour in hand is circled in pen. */
+.swatch.selected::before,
+.collab-swatch.sel::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  background: var(--ring) center / 100% 100% no-repeat;
+  pointer-events: none;
+  animation: ring-on 0.22s ease-out;
+}
+
+/* An ink dot in the corner marks whichever swatch is the back colour. */
+.swatch.alt::after,
+.collab-swatch.alt::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 1.5px var(--paper);
 }
 
 .size-control {
@@ -482,10 +859,55 @@ input {
   transition: all 0.12s;
 }
 
+/* Range inputs are a pencil line with a drop of ink to drag. The vendor
+   pseudo-elements each get a rule of their own: one unknown selector in a
+   list voids the whole rule, so grouping them would style neither engine. */
+.size-slider,
+.collab-size-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+
 .size-slider {
   width: 72px;
-  accent-color: var(--accent);
-  cursor: pointer;
+}
+
+.size-slider::-webkit-slider-runnable-track,
+.collab-size-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--pencil-h) center / 100% 100% no-repeat;
+}
+
+.size-slider::-moz-range-track,
+.collab-size-slider::-moz-range-track {
+  height: 4px;
+  background: var(--pencil-h) center / 100% 100% no-repeat;
+}
+
+.size-slider::-webkit-slider-thumb,
+.collab-size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 46% 54% 50% 50% / 55% 45% 55% 45%;
+  background: var(--ink);
+  border: 2px solid var(--card);
+  box-shadow: 0 1px 2px rgba(70, 50, 25, 0.4);
+}
+
+.size-slider::-moz-range-thumb,
+.collab-size-slider::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border-radius: 46% 54% 50% 50% / 55% 45% 55% 45%;
+  background: var(--ink);
+  border: 2px solid var(--card);
+  box-shadow: 0 1px 2px rgba(70, 50, 25, 0.4);
 }
 
 .toolbar-spacer {
@@ -493,74 +915,72 @@ input {
 }
 
 .clear-btn {
-  padding: 5px 12px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-muted);
-  font-size: 12px;
-  transition: all 0.12s;
-}
-
-.clear-btn:hover {
-  border-color: #ff4757;
-  color: #ff4757;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 650;
 }
 
 .send-drawing-btn {
-  padding: 6px 14px;
-  background: var(--accent);
-  border: none;
-  border-radius: 6px;
-  color: white;
-  font-size: 12px;
+  padding: 7px 16px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.3px;
-  transition: opacity 0.12s, transform 0.1s;
-}
-
-.send-drawing-btn:hover {
-  opacity: 0.88;
-  transform: translateY(-1px);
+  --infm: 50;
 }
 
 /* ──────────────────────────────────────────
    CHAT FEED
+   Notebook paper: blue rules and a double red margin, scrolling with the
+   messages. Each message is a slip laid on the page.
 ────────────────────────────────────────── */
 
 .chat-feed {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 16px;
+  padding: 12px 16px 12px 42px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   scroll-behavior: smooth;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(90deg, transparent 27px, var(--margin-line) 27px 28px, transparent 28px 31px,
+      var(--margin-line) 31px 32px, transparent 32px),
+    repeating-linear-gradient(transparent 0 23px, var(--ruled) 23px 24px),
+    var(--grain);
+  background-attachment: local;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 58, 38, 0.3) transparent;
 }
 
 .chat-feed::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 .chat-feed::-webkit-scrollbar-track {
   background: transparent;
 }
 .chat-feed::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 2px;
+  background: rgba(74, 58, 38, 0.28);
+  border-radius: 3px;
 }
 
 .feed-empty {
   text-align: center;
-  color: var(--text-dim);
-  font-size: 12px;
+  color: var(--ink-faint);
+  font-size: 14px;
+  --infm: 70;
   padding: 20px 0;
-  font-style: italic;
 }
 
 .sys-msg {
   text-align: center;
-  font-size: 11px;
-  color: var(--text-dim);
+  font-family: var(--type);
+  font-size: 11.5px;
+  color: var(--ink-faint);
   padding: 2px 0;
 }
 
@@ -569,6 +989,7 @@ input {
   flex-direction: column;
   max-width: 65%;
   gap: 3px;
+  animation: write-in 0.28s ease-out;
 }
 
 .message.own {
@@ -588,48 +1009,66 @@ input {
 }
 
 .msg-author {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  --infm: 50;
 }
 
 .msg-time {
-  font-size: 10px;
-  color: var(--text-dim);
+  font-family: var(--type);
+  font-size: 10.5px;
+  color: var(--ink-faint);
 }
 
 .msg-text {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  border-top-left-radius: 2px;
+  background: var(--card);
+  border-radius: 2px;
   padding: 7px 12px;
-  color: var(--text);
+  box-shadow: var(--lift-1);
+  color: var(--ink);
   word-break: break-word;
 }
 
+/* Your own slips are on blue stock. */
 .message.own .msg-text {
-  border-radius: 10px;
-  border-top-right-radius: 2px;
-  background: var(--accent-dim);
-  border-color: rgba(108, 84, 245, 0.35);
+  background: #e9eefa;
 }
 
+/* A sent drawing, taped into the notebook. */
 .msg-drawing {
+  position: relative;
+  display: block;
   max-width: 320px;
   width: 100%;
-  border-radius: 8px;
-  border: 1px solid var(--border);
+  margin-top: 10px;
+  rotate: -0.8deg;
+}
+
+.message.own .msg-drawing {
+  rotate: 0.8deg;
+}
+
+.msg-drawing img {
   display: block;
-  background: white;
+  width: 100%;
+  background: #fff;
+  box-shadow: var(--lift-2);
+}
+
+.msg-drawing .tape {
+  top: -11px;
+  left: 50%;
+  width: 66px;
+  height: 20px;
+  translate: -50% 0;
+  rotate: -4deg;
 }
 
 /* Text input bar */
 .text-bar {
   padding: 10px 16px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  background: var(--paper-warm) var(--grain);
+  border-top: 1px solid var(--rule);
   display: flex;
   gap: 8px;
   flex-shrink: 0;
@@ -637,38 +1076,30 @@ input {
 
 .text-input {
   flex: 1;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px 12px;
-  color: var(--text);
-  font-size: 13px;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--ink-faint);
+  border-radius: 0;
+  padding: 6px 4px;
+  color: var(--ink);
+  font-size: 14px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background-color 0.15s;
 }
 
 .text-input:focus {
-  border-color: var(--accent);
+  border-bottom-color: var(--blue);
 }
 
 .text-input::placeholder {
-  color: var(--text-dim);
+  color: var(--ink-faint);
 }
 
 .text-send-btn {
-  padding: 8px 18px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text-muted);
+  padding: 6px 16px;
   font-size: 13px;
-  font-weight: 600;
-  transition: all 0.12s;
-}
-
-.text-send-btn:hover {
-  border-color: var(--accent);
-  color: var(--text);
+  font-weight: 700;
 }
 
 /* ──────────────────────────────────────────
@@ -676,7 +1107,7 @@ input {
 ────────────────────────────────────────── */
 
 .welcome-identity {
-  margin-top: -14px;
+  margin-top: -12px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -690,28 +1121,32 @@ input {
 }
 
 .identity-name {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
+  --infm: 60;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* A pencilled correction, not a button. */
 .identity-edit {
   margin-left: auto;
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-muted);
-  padding: 3px 9px;
-  font-size: 11px;
-  font-weight: 600;
-  transition: all 0.12s;
+  border: none;
+  color: var(--blue);
+  padding: 3px 4px;
+  font-family: var(--type);
+  font-size: 12.5px;
+  text-decoration: underline wavy;
+  text-decoration-color: rgba(44, 79, 168, 0.45);
+  text-underline-offset: 3px;
+  transition: color 0.12s, text-decoration-color 0.12s;
 }
 
 .identity-edit:hover {
-  border-color: var(--border-light);
-  color: var(--text);
+  color: var(--blue-deep);
+  text-decoration-color: var(--blue);
 }
 
 .choice-list {
@@ -729,78 +1164,75 @@ input {
 
 .avatar.ringed {
   border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--avatar-ring);
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--avatar-ring);
 }
 
 .avatar-picker {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 22px;
 }
 
+/* The face is mounted like a photo on an ID card. */
 .avatar-stage {
   position: relative;
   flex-shrink: 0;
+  padding: 8px 8px 14px;
+  background: var(--card) var(--grain);
+  border-radius: 2px;
+  box-shadow: var(--lift-2);
+  rotate: -2.5deg;
 }
 
+/* A paper die. Pressing it rolls it. */
 .avatar-dice {
   position: absolute;
-  right: -4px;
-  bottom: -4px;
-  width: 28px;
-  height: 28px;
+  right: -12px;
+  bottom: -10px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface-2);
-  border: 1px solid var(--border-light);
-  border-radius: 50%;
-  color: var(--text-muted);
-  font-size: 15px;
-  line-height: 1;
-  transition: all 0.12s;
+  background: var(--card);
+  border: 1.5px solid rgba(42, 37, 31, 0.55);
+  border-radius: 8px;
+  color: var(--ink);
+  box-shadow: 0 2px 0 var(--rule-strong);
+  rotate: 10deg;
+  transition: transform 0.18s, color 0.12s;
 }
 
 .avatar-dice:hover {
-  color: var(--accent);
-  border-color: var(--accent);
+  color: var(--blue);
+  transform: rotate(-16deg) scale(1.06);
+}
+
+.avatar-dice:active {
+  transform: rotate(170deg) scale(0.94);
 }
 
 .avatar-rows {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   flex: 1;
   min-width: 0;
 }
 
+/* Each part is a blank on the form, on a dotted line. */
 .avatar-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 3px;
+  padding: 1px 0 3px;
+  border-bottom: 1.5px dotted var(--rule-strong);
 }
 
 .avatar-step {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: var(--text-dim);
-  transition: all 0.12s;
-}
-
-.avatar-step:hover {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.05);
 }
 
 .avatar-row-label {
@@ -813,17 +1245,16 @@ input {
 }
 
 .avatar-row-kind {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: var(--text-dim);
-  font-weight: 700;
+  font-family: var(--type);
+  font-size: 10.5px;
+  color: var(--ink-faint);
 }
 
 .avatar-row-value {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
+  font-size: 14px;
+  font-weight: 650;
+  --infm: 50;
+  color: var(--ink);
 }
 
 /* ── Destination carousel ── */
@@ -849,19 +1280,22 @@ input {
 
 /* Slides are stacked and moved individually rather than riding one track, so
    the strip can wrap without rewinding through every slide in between. Each is
-   the full width of the viewport, which is why the tween uses xPercent. */
+   the full width of the viewport, which is why the tween uses xPercent.
+   The padding keeps each card's shadow and curled corners inside the clipping
+   viewport; the JS measures the slide, so it is counted in the height. */
 .carousel-slide {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
+  padding: 6px 8px 18px;
 }
 
 /* Arrows flank the slide; the dots sit under the whole row. */
 .carousel-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .carousel-dots {
@@ -869,26 +1303,16 @@ input {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding-top: 2px;
 }
 
 .carousel-arrow {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--text-muted);
-  transition: all 0.12s;
 }
 
-.carousel-arrow:hover:not(:disabled) {
-  border-color: var(--border-light);
-  color: var(--text);
+.carousel-arrow:active:not(:disabled) {
+  transform: scale(0.9);
 }
 
 .carousel-arrow:disabled {
@@ -896,57 +1320,95 @@ input {
   cursor: not-allowed;
 }
 
+/* Pencil dots; the current one is a dash of blue ink. */
 .carousel-dot {
   width: 9px;
   height: 9px;
   padding: 0;
   border: none;
-  border-radius: 50%;
-  background: var(--border-light);
-  transition: all 0.16s;
+  border-radius: 50% 45% 55% 50%;
+  background: var(--ink-faint);
+  opacity: 0.5;
+  transition: all 0.2s;
 }
 
 .carousel-dot.on {
-  background: var(--accent);
   width: 26px;
-  border-radius: 5px;
+  background: var(--blue);
+  opacity: 1;
+  border-radius: 6px 3px 5px 4px / 4px 5px 3px 6px;
+  rotate: -3deg;
 }
 
 /* A destination that does not exist yet: present, described, not clickable. */
 .choice-card.wip {
-  border-style: dashed;
+  opacity: 0.85;
 }
 
 .choice-card.wip .choice-icon,
 .choice-card.wip .choice-title {
-  color: var(--text-muted);
+  color: var(--ink-soft);
 }
 
+/* A rubber stamp, slightly crooked and not quite fully inked. */
 .wip-badge {
-  margin-left: 7px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--accent-dim);
-  border: 1px solid rgba(108, 84, 245, 0.4);
-  color: var(--accent);
-  font-size: 9px;
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1.5px solid var(--red);
+  border-radius: 3px;
+  color: var(--red);
+  font-family: var(--type);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.8px;
+  letter-spacing: 1px;
   text-transform: uppercase;
   vertical-align: middle;
+  rotate: -6deg;
+  opacity: 0.85;
 }
 
+/* Index cards: a red rule under the heading and faint blue lines below.
+   The heading paints over the lines so they start under the rule.
+   The curled-corner shadows sit behind the card on negative z — the classic
+   lifted-paper trick. It only works while the card is not a stacking context,
+   which is why nothing here transforms the card itself: the carousel moves
+   the slide around it instead. */
 .choice-card {
+  position: relative;
   width: 100%;
-  padding: 20px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  padding: 18px 20px 20px;
+  background-color: var(--card);
+  background-image: repeating-linear-gradient(transparent 0 25px, var(--ruled) 25px 26px), var(--grain);
+  border-radius: 2px;
+  box-shadow: var(--lift-1);
   display: flex;
   flex-direction: column;
   gap: 12px;
   text-align: left;
-  transition: border-color 0.15s, transform 0.12s;
+  transition: box-shadow 0.2s;
+}
+
+.choice-card::before,
+.choice-card::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  bottom: 9px;
+  width: 46%;
+  height: 26%;
+  box-shadow: 0 9px 9px rgba(70, 50, 25, 0.3);
+  pointer-events: none;
+}
+
+.choice-card::before {
+  left: 10px;
+  transform: rotate(-3deg) skewX(-8deg);
+}
+
+.choice-card::after {
+  right: 10px;
+  transform: rotate(3deg) skewX(8deg);
 }
 
 .choice-card:not(.static) {
@@ -955,45 +1417,48 @@ input {
   align-items: flex-start;
 }
 
-.choice-card:not(.static):hover {
-  border-color: var(--accent);
-  transform: translateY(-1px);
-}
-
+.choice-card:not(.static):hover,
 .choice-card.static.open {
-  border-color: var(--border-light);
+  box-shadow: var(--lift-2);
 }
 
 .choice-head {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  margin: -18px -20px 0;
+  padding: 18px 20px 12px;
+  background: var(--card) var(--grain);
+  border-bottom: 2px solid var(--margin-line);
+  border-radius: 2px 2px 0 0;
 }
 
 .choice-icon {
-  font-size: 18px;
-  color: var(--accent);
-  line-height: 1.2;
+  color: var(--blue);
+  line-height: 0;
   flex-shrink: 0;
 }
 
 .choice-body {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 
 .choice-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.2;
+  --infm: 75;
+  --bnce: 20;
+  color: var(--ink);
 }
 
 .choice-desc {
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.5;
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.45;
 }
 
 /* A caption and its buttons read as one unit, tighter than the card's gap. */
@@ -1009,101 +1474,91 @@ input {
 
 .room-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   margin-top: 4px;
 }
 
+/* Shantell runs wider than a system face, so the side padding is trimmed to
+   keep two-word labels like "Create Private" on one line in a half-width slot. */
 .room-btn {
   flex: 1;
-  padding: 9px 12px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 600;
-  transition: all 0.12s;
-}
-
-.room-btn:hover:not(:disabled) {
-  border-color: var(--border-light);
-  color: var(--text);
-}
-
-.room-btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
-}
-
-.room-btn.primary:hover:not(:disabled) {
-  opacity: 0.88;
+  padding: 9px 8px;
+  font-size: 13.5px;
+  font-weight: 650;
+  --infm: 40;
 }
 
 .room-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.38;
   cursor: not-allowed;
 }
 
+/* A raffle ticket: notches punched from both ends, the code typed across it. */
 .room-code-display {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  gap: 2px;
+  padding: 12px 22px;
+  background: var(--manila) var(--grain);
+  box-shadow: inset 0 0 0 1px rgba(74, 58, 38, 0.12);
+  -webkit-mask:
+    radial-gradient(circle at 0 50%, transparent 9px, #000 9.5px) left / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 50%, transparent 9px, #000 9.5px) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle at 0 50%, transparent 9px, #000 9.5px) left / 51% 100% no-repeat,
+    radial-gradient(circle at 100% 50%, transparent 9px, #000 9.5px) right / 51% 100% no-repeat;
 }
 
 .room-code-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--text-dim);
+  font-family: var(--type);
+  font-size: 12px;
+  color: var(--ink-soft);
 }
 
 .room-code {
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: 5px;
-  color: var(--accent);
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--type);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  color: var(--ink);
 }
 
 .room-input {
   width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 9px 12px;
-  color: var(--text);
-  font-size: 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--ink-soft);
+  border-radius: 0;
+  padding: 8px 12px 6px;
+  color: var(--ink);
+  font-family: var(--type);
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: 4px;
+  letter-spacing: 6px;
   text-align: center;
-  font-family: ui-monospace, Consolas, monospace;
   outline: none;
   margin-bottom: 4px;
+  transition: border-color 0.15s;
 }
 
 .room-input:focus {
-  border-color: var(--accent);
+  border-bottom-color: var(--blue);
+}
+
+.room-input::placeholder {
+  color: var(--ink-faint);
+  font-size: 16px;
+  letter-spacing: 3px;
 }
 
 .back-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-muted);
-  padding: 3px 9px;
-  font-size: 14px;
-  transition: all 0.12s;
-  margin-right: 4px;
+  width: 32px;
+  height: 32px;
+  margin-right: 2px;
 }
 
 .back-btn:hover {
-  border-color: var(--border-light);
-  color: var(--text);
+  transform: translateX(-2px);
 }
 
 /* ──────────────────────────────────────────
@@ -1114,15 +1569,20 @@ input {
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: #ebebeb;
 }
 
-/* The drawing surface is larger than the viewport and slides under it. */
+/* The drawing surface is larger than the viewport and slides under it.
+   A faint dot grid, like a bullet-journal page, gives the eye something to
+   track while panning; it is paper, not pixels, so it never reaches a bake. */
 .collab-surface {
   position: absolute;
   top: 0;
   left: 0;
   will-change: transform;
+  background-color: var(--paper);
+  background-image: radial-gradient(circle, rgba(74, 58, 38, 0.22) 1px, transparent 1.6px), var(--grain);
+  background-size: 28px 28px, auto;
+  box-shadow: 0 0 0 1px rgba(70, 50, 25, 0.12), 0 14px 40px rgba(70, 50, 25, 0.25);
 }
 
 .collab-canvas {
@@ -1132,15 +1592,21 @@ input {
   height: 100%;
   display: block;
   touch-action: none;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18), 0 10px 40px rgba(0, 0, 0, 0.25);
+  mix-blend-mode: multiply;
 }
 
-/* Floating toolbar */
+/* Floating toolbar: a strip of card laid across the top of the sheet.
+   Centred by auto margins between left: 0 and right: 0, not by left: 50% —
+   that would leave it only the right half of the screen to size itself in,
+   and it would wrap at 640px however wide the window. It also leaves
+   `transform` free for GSAP as it lands. */
 .collab-toolbar {
   position: fixed;
   top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1148,31 +1614,29 @@ input {
   flex-wrap: wrap;
   max-width: calc(100vw - 16px);
   gap: 5px;
-  padding: 7px 10px;
-  background: rgba(13, 13, 20, 0.9);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  padding: 7px 12px;
+  background: var(--card) var(--grain);
+  border-radius: 3px;
+  box-shadow: var(--lift-2);
   z-index: 100;
   white-space: nowrap;
   user-select: none;
 }
 
 .collab-logo {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
-  color: var(--accent);
-  letter-spacing: -0.3px;
+  color: var(--blue);
+  --infm: 90;
+  --bnce: 30;
   margin: 0 2px 0 0;
 }
 
 .collab-code {
-  font-size: 12px;
+  font-family: var(--type);
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text-dim);
-  font-family: ui-monospace, Consolas, monospace;
+  color: var(--ink-soft);
   letter-spacing: 1px;
   margin-right: 2px;
 }
@@ -1183,71 +1647,29 @@ input {
 
 .canvas-full-text {
   margin-top: -14px;
-  font-size: 13px;
-  color: var(--text-muted);
+  font-size: 14px;
+  color: var(--ink-soft);
   line-height: 1.6;
 }
 
 .collab-sep {
-  width: 1px;
   height: 20px;
-  background: var(--border);
-  flex-shrink: 0;
   margin: 0 3px;
 }
 
-.collab-ctrl-btn {
-  position: relative;
-  width: 28px;
-  height: 28px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-muted);
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.12s;
-}
-
-.collab-ctrl-btn:hover,
-.collab-ctrl-btn.hi {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-dim);
-}
-
+.collab-ctrl-btn,
 .collab-tool-btn {
-  width: 28px;
-  height: 28px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-muted);
+  width: 30px;
+  height: 30px;
   font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.12s;
 }
 
-.collab-tool-btn:hover {
-  border-color: var(--border-light);
-  color: var(--text);
-}
-
-.collab-tool-btn.active {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-  color: var(--text);
-}
-
-/* The two colours in hand: back one behind, front one overlapping it. */
+/* The two colours in hand, as two paint chips: the back one tucked behind,
+   the front one laid over it. */
 .collab-duo {
   position: relative;
-  width: 30px;
-  height: 24px;
+  width: 32px;
+  height: 26px;
   background: transparent;
   border: none;
   padding: 0;
@@ -1257,61 +1679,38 @@ input {
 .collab-duo-main,
 .collab-duo-alt {
   position: absolute;
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  width: 17px;
+  height: 17px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(42, 37, 31, 0.25), 0 1px 3px rgba(70, 50, 25, 0.35);
+  transition: background-color 0.2s, box-shadow 0.12s;
 }
 
 .collab-duo-alt {
   right: 0;
   bottom: 0;
+  rotate: 8deg;
 }
 
 .collab-duo-main {
   left: 0;
   top: 0;
+  rotate: -6deg;
 }
 
 .collab-duo:hover .collab-duo-main {
-  border-color: rgba(255, 255, 255, 0.8);
-}
-
-/* A corner notch marks whichever swatch is the secondary colour. */
-.collab-swatch.alt::after {
-  content: '';
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 7px;
-  height: 7px;
-  border-radius: 2px;
-  background: var(--text);
-  box-shadow: 0 0 0 1.5px rgba(13, 13, 20, 0.9);
+  box-shadow: 0 0 0 1.5px var(--ink), 0 2px 4px rgba(70, 50, 25, 0.35);
 }
 
 .collab-swatches {
   display: flex;
-  gap: 3px;
+  gap: 4px;
   align-items: center;
 }
 
 .collab-swatch {
-  position: relative;
-  width: 17px;
-  height: 17px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  transition: transform 0.1s, border-color 0.1s;
-  outline: none;
-}
-
-.collab-swatch:hover { transform: scale(1.22) }
-.collab-swatch.sel {
-  border-color: rgba(255, 255, 255, 0.75);
-  border-width: 2px;
-  transform: scale(1.18);
+  width: 18px;
+  height: 18px;
 }
 
 .collab-size-row {
@@ -1329,42 +1728,48 @@ input {
 }
 
 .collab-size-slider {
-  width: 60px;
-  accent-color: var(--accent);
-  cursor: pointer;
+  width: 62px;
 }
 
 .collab-online {
-  font-size: 10px;
-  color: var(--text-muted);
-  letter-spacing: 0.3px;
+  font-family: var(--type);
+  font-size: 11.5px;
+  color: var(--ink-soft);
 }
 
-/* Chat panel */
 /* Tools & shortcuts reference. The backdrop makes it modal: you are reading,
    not drawing, so it should not be possible to mark the canvas behind it. */
 .info-backdrop {
   position: fixed;
   inset: 0;
   z-index: 110;
-  background: rgba(5, 5, 9, 0.5);
+  background: rgba(60, 45, 25, 0.22);
 }
 
+/* A note that was folded in three: it unfolds along the top crease, and the
+   two folds stay faintly visible across it.
+   Centred with auto margins rather than `translate`: GSAP folds a CSS
+   translate into its own transform with the perspective in front of it,
+   which moves the vanishing point to one edge and unfolds the note lopsided. */
 .info-panel {
   position: fixed;
   top: 62px;
-  left: 50%;
-  translate: -50% 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
   width: min(420px, calc(100vw - 32px));
   max-height: calc(100dvh - 90px);
   display: flex;
   flex-direction: column;
-  background: rgba(13, 13, 20, 0.97);
-  border: 1px solid var(--border-light);
-  border-radius: 14px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background-color: var(--card);
+  background-image:
+    linear-gradient(transparent calc(33.3% - 1px), rgba(70, 50, 25, 0.07) calc(33.3% - 1px),
+      rgba(255, 255, 255, 0.7) calc(33.3% + 1px), transparent calc(33.3% + 2px)),
+    linear-gradient(transparent calc(66.6% - 1px), rgba(70, 50, 25, 0.07) calc(66.6% - 1px),
+      rgba(255, 255, 255, 0.7) calc(66.6% + 1px), transparent calc(66.6% + 2px)),
+    var(--grain);
+  border-radius: 2px;
+  box-shadow: var(--lift-3);
   z-index: 111;
   overflow: hidden;
 }
@@ -1373,43 +1778,57 @@ input {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
+  padding: 12px 14px 10px 18px;
+  background: var(--pencil-h) bottom / 100% 4px no-repeat;
+  font-size: 17px;
+  font-weight: 750;
+  --infm: 75;
+  color: var(--ink);
   flex-shrink: 0;
 }
 
-.info-head > button {
+.info-head > button,
+.collab-chat-head > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   background: transparent;
   border: none;
-  color: var(--text-muted);
-  font-size: 18px;
-  line-height: 1;
-  padding: 0 2px;
+  border-radius: 50%;
+  color: var(--ink-soft);
+  transition: color 0.12s, background-color 0.12s, transform 0.15s;
 }
 
-.info-head > button:hover {
-  color: var(--text);
+.info-head > button:hover,
+.collab-chat-head > button:hover {
+  color: var(--ink);
+  background: var(--paper-shade);
+  transform: rotate(90deg);
 }
 
 .info-body {
-  padding: 6px 16px 16px;
+  padding: 4px 18px 18px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 58, 38, 0.3) transparent;
 }
 
 .info-body section {
   padding-top: 12px;
 }
 
+/* Section headings are typed, then gone over with a highlighter. */
 .info-body h4 {
-  font-size: 10px;
+  width: fit-content;
+  padding: 0 4px;
+  margin: 0 0 6px -4px;
+  font-family: var(--type);
+  font-size: 12.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--text-dim);
-  margin-bottom: 8px;
+  color: var(--ink);
+  background: linear-gradient(transparent 50%, var(--marker-soft) 50% 92%, transparent 92%);
 }
 
 .info-row {
@@ -1426,21 +1845,21 @@ input {
   gap: 4px;
   min-width: 46px;
   padding-top: 1px;
-  color: var(--accent);
+  color: var(--blue);
   flex-shrink: 0;
 }
 
 .info-word {
-  font-size: 12px;
+  font-family: var(--type);
+  font-size: 13px;
   font-weight: 700;
-  font-family: ui-monospace, Consolas, monospace;
 }
 
 .info-duo {
   position: relative;
   display: block;
-  width: 26px;
-  height: 20px;
+  width: 28px;
+  height: 22px;
 }
 
 .info-text {
@@ -1451,68 +1870,98 @@ input {
 }
 
 .info-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--ink);
 }
 
 .info-hint {
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 12.5px;
+  color: var(--ink-soft);
   line-height: 1.5;
 }
 
 .info-foot {
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid var(--border);
-  font-size: 11px;
-  color: var(--text-dim);
+  background: var(--pencil-h) top / 100% 4px no-repeat;
+  font-size: 12px;
+  color: var(--ink-faint);
   line-height: 1.6;
+}
+
+/* Keys, as on a typewriter: raised, with a deeper lower edge. */
+.collab-kbd {
+  font-family: var(--type);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+  border-bottom-width: 2.5px;
+  border-radius: 4px;
+  padding: 0 5px;
+  line-height: 1.5;
 }
 
 /* Unread chat toasts — top right, under the toolbar, only while chat is shut. */
 .collab-toasts {
   position: fixed;
-  top: 64px;
+  top: 66px;
   right: 18px;
   z-index: 95;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: 10px;
   max-width: min(290px, calc(100vw - 36px));
 }
 
+/* Notes torn off a pad. The torn edge is a clip-path on the paper, which
+   would clip a box-shadow along with it, so the shadow is a filter on the
+   button instead — a drop-shadow follows the torn shape. The resting tilt is
+   on the paper too: GSAP owns the button's transform for the slide in and
+   the peel off, and would flatten any rotation set on it. */
 .collab-toast {
+  display: block;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  filter: drop-shadow(0 1px 1px rgba(70, 50, 25, 0.18)) drop-shadow(0 6px 8px rgba(70, 50, 25, 0.22));
+}
+
+.toast-paper {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  width: 100%;
-  padding: 8px 12px;
-  text-align: left;
-  background: rgba(13, 13, 20, 0.92);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  transition: border-color 0.12s;
+  padding: 12px 14px 9px;
+  background: var(--sticky) var(--grain);
+  clip-path: polygon(0 4px, 6% 0, 13% 3px, 21% 0, 30% 4px, 38% 1px, 47% 3px, 56% 0, 64% 4px,
+    73% 1px, 81% 3px, 90% 0, 100% 3px, 100% 100%, 0 100%);
+  rotate: -1.2deg;
+  transition: background-color 0.12s;
 }
 
-.collab-toast:hover {
-  border-color: var(--border-light);
+.collab-toast:nth-child(even) .toast-paper {
+  rotate: 0.9deg;
+}
+
+.collab-toast:hover .toast-paper {
+  background-color: #fbe98a;
 }
 
 .toast-author {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 700;
 }
 
 .toast-text {
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.45;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.4;
+  --infm: 45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -1521,45 +1970,48 @@ input {
   overflow-wrap: anywhere;
 }
 
+/* A count circled in red pencil. */
 .collab-unread {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  min-width: 15px;
-  height: 15px;
+  top: -6px;
+  right: -6px;
+  min-width: 17px;
+  height: 17px;
   padding: 0 4px;
-  border-radius: 8px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 9px;
+  border-radius: 50% 46% 52% 48%;
+  background: var(--red);
+  color: #fffaf0;
+  font-family: var(--type);
+  font-size: 10px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 0 0 2px var(--card);
+  rotate: 8deg;
   pointer-events: none;
 }
 
-/* A floating panel over the canvas rather than an edge drawer — toggled with M. */
+/* A spiral-bound notepad over the canvas rather than an edge drawer —
+   toggled with M. It slides up into place and settles. */
 .collab-chat {
   position: fixed;
   right: 18px;
   bottom: 18px;
   width: min(320px, calc(100vw - 36px));
   height: min(58dvh, 440px);
-  background: rgba(11, 11, 16, 0.92);
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  background: var(--paper) var(--grain);
+  border-radius: 3px;
   overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--lift-3);
   display: flex;
   flex-direction: column;
   z-index: 90;
   opacity: 0;
-  transform: translateY(10px) scale(0.98);
+  transform: translateY(18px) rotate(1.5deg);
+  transform-origin: bottom right;
   pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity 0.2s ease, transform 0.34s cubic-bezier(0.2, 0.9, 0.3, 1.25);
 }
 
 .collab-chat.open {
@@ -1569,55 +2021,40 @@ input {
 }
 
 .collab-chat-head {
-  height: 46px;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--border);
+  position: relative;
+  height: 54px;
+  padding: 14px 10px 0 16px;
+  background: var(--pencil-h) bottom / 100% 4px no-repeat;
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
 
-.collab-kbd {
-  font-family: ui-monospace, Consolas, monospace;
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text-dim);
-  border: 1px solid var(--border-light);
-  border-radius: 4px;
-  padding: 1px 5px;
-  line-height: 1.4;
+/* The binding: a row of punched holes along the top edge. */
+.collab-chat-head::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 14px;
+  right: 14px;
+  height: 9px;
+  background: radial-gradient(circle, rgba(70, 50, 25, 0.38) 0 2.6px, rgba(70, 50, 25, 0.1) 3.3px, transparent 3.8px)
+    0 0 / 18px 9px repeat-x;
 }
 
 .collab-chat-head > span:first-child {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
+  font-size: 16px;
+  font-weight: 750;
+  --infm: 75;
+  color: var(--ink);
 }
 
 .collab-chat-user {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   flex: 1;
   text-align: right;
-}
-
-.collab-chat-head > button {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 18px;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0 2px;
-}
-
-.collab-chat-head > button:hover {
-  color: var(--text);
-}
-
-.collab-chat-bar {
-  border-top: 1px solid var(--border);
 }
 
 /* Brush size preview — a true-to-size ring at the cursor while scrolling. */
@@ -1626,7 +2063,7 @@ input {
   translate: -50% -50%;
   border: 1.5px solid;
   border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 1px rgba(255, 253, 247, 0.75);
   pointer-events: none;
   z-index: 90;
 }
@@ -1636,11 +2073,13 @@ input {
   left: 50%;
   top: calc(100% + 8px);
   transform: translateX(-50%);
-  padding: 2px 7px;
-  border-radius: 5px;
-  background: rgba(13, 13, 20, 0.9);
-  color: var(--text);
-  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 2px;
+  background: var(--card);
+  box-shadow: var(--lift-1);
+  color: var(--ink);
+  font-family: var(--type);
+  font-size: 11.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -1658,25 +2097,35 @@ input {
   align-items: flex-start;
   gap: 3px;
   transition: left 0.08s linear, top 0.08s linear;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 1px 2px rgba(70, 50, 25, 0.35));
 }
 
+/* An ink outline, so a pale player's pointer still shows on the paper. */
+.remote-cursor svg path {
+  stroke: var(--ink);
+  stroke-width: 1.4;
+}
+
+/* Name tags are scraps of coloured tape. */
 .remote-cursor-name {
-  margin-top: 10px;
-  padding: 2px 7px;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 10px;
+  margin-top: 11px;
+  padding: 1px 7px 2px;
+  border-radius: 2px;
+  font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  rotate: -2deg;
 }
 
-/* Positioning uses the standalone `translate`/`rotate` properties so GSAP can
-   own `transform` for its animations without clobbering the layout offset. */
+/* The box is the pin: head on top, needle below, its point on the spot.
+   It is pulled into place with negative margins — half its width, all of its
+   height — rather than a translate: GSAP folds a CSS translate into the
+   transform it animates, and the push-in's `y` would overwrite the offset. */
 .pin-marker {
   position: absolute;
-  translate: -50% -100%;
+  width: 18px;
+  height: 28px;
+  margin: -28px 0 0 -9px;
   z-index: 20;
   cursor: pointer;
   pointer-events: none;
@@ -1686,33 +2135,80 @@ input {
   pointer-events: auto;
 }
 
+/* The steel needle, painted before the head so the head sits over its top. */
+.pin-marker::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 13px;
+  width: 2px;
+  height: 15px;
+  border-radius: 0 0 1px 1px;
+  background: linear-gradient(90deg, #7d7a75, #dcdad5 45%, #6f6c67);
+}
+
+/* A domed plastic head in the author's colour, lit from the top left and
+   casting its shadow down and to the right. */
 .pin-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50% 50% 50% 0;
-  rotate: -45deg;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  position: absolute;
+  left: 1px;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.8) 0 1.6px, rgba(255, 255, 255, 0) 5px),
+    radial-gradient(circle at 62% 72%, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0) 62%),
+    var(--pin, var(--red));
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2), 3px 5px 4px -1px rgba(70, 50, 25, 0.38);
   transition: scale 0.15s;
 }
 
 .pin-marker:hover .pin-dot,
 .pin-marker.open .pin-dot {
-  scale: 1.25;
+  scale: 1.18;
 }
 
+/* A sticky note on the pin. The face and the shadow of its curling corner
+   are pseudo-elements: the resting tilt makes the note a stacking context,
+   which would put a negative-z shadow on top of a real background. */
 .pin-bubble {
   position: absolute;
-  left: 18px;
-  top: -6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 12px;
-  min-width: 150px;
+  left: 22px;
+  top: -8px;
+  isolation: isolate;
+  min-width: 160px;
   max-width: 230px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  padding: 10px 12px 14px;
+  rotate: -1.5deg;
   z-index: 30;
+  cursor: default;
+}
+
+.pin-bubble::before,
+.pin-input-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(transparent 72%, rgba(150, 120, 20, 0.07)),
+    var(--sticky) var(--grain);
+  border-radius: 0 0 22px 2px / 0 0 6px 2px;
+  box-shadow: 0 1px 1px rgba(70, 50, 25, 0.14);
+}
+
+.pin-bubble::after,
+.pin-input-card::after {
+  content: '';
+  position: absolute;
+  z-index: -2;
+  right: 6px;
+  bottom: 7px;
+  width: 70%;
+  height: 40%;
+  box-shadow: 5px 10px 12px rgba(70, 50, 25, 0.34);
+  transform: rotate(3deg) skewX(8deg);
 }
 
 .pin-bubble-head {
@@ -1723,91 +2219,88 @@ input {
   gap: 10px;
 }
 
-/* Only reachable with a bubble open, so a stray click can't wipe a comment. */
+/* Only reachable with a note open, so a stray click can't wipe a comment. */
 .pin-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: none;
-  color: var(--text-dim);
-  font-size: 15px;
-  line-height: 1;
-  padding: 0 2px;
-  margin-top: -2px;
+  border-radius: 50%;
+  color: var(--ink-faint);
+  padding: 2px;
+  margin: -3px -4px 0 0;
   flex-shrink: 0;
-  transition: color 0.12s;
+  transition: color 0.12s, transform 0.15s;
 }
 
 .pin-delete:hover {
-  color: #ff6b6b;
+  color: var(--red);
+  transform: rotate(90deg);
 }
 
 .pin-author {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   display: block;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .pin-text {
-  font-size: 13px;
-  color: var(--text);
+  font-size: 14.5px;
+  line-height: 1.35;
+  --infm: 75;
+  color: var(--ink);
   word-break: break-word;
 }
 
+/* A blank note, waiting to be written on. */
 .pin-input-card {
   position: absolute;
-  translate: 10px -50%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px;
-  width: 210px;
+  translate: 12px -50%;
+  isolation: isolate;
+  width: 220px;
+  padding: 12px 12px 14px;
+  rotate: 1deg;
   z-index: 40;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
 }
 
 .pin-text-input {
   width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 7px 10px;
-  color: var(--text);
-  font-size: 13px;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid rgba(42, 37, 31, 0.4);
+  border-radius: 0;
+  padding: 5px 2px;
+  color: var(--ink);
+  font-size: 15px;
+  --infm: 70;
   outline: none;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .pin-text-input:focus {
-  border-color: var(--accent);
+  border-bottom-color: var(--blue);
+}
+
+.pin-text-input::placeholder {
+  color: rgba(42, 37, 31, 0.45);
 }
 
 .pin-input-row {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
 .pin-confirm-btn,
 .pin-cancel-btn {
   flex: 1;
   padding: 5px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 5px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-muted);
-  transition: all 0.12s;
-}
-
-.pin-confirm-btn {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .pin-confirm-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.38;
   cursor: not-allowed;
 }
 
@@ -1870,25 +2363,34 @@ input {
   }
 
   .carousel-dot.on {
-    border-radius: 6px;
+    width: 30px;
   }
 
-  /* The dot is the visual; the padding around it is the tap target. */
-  .pin-marker {
-    padding: 12px;
-    margin: -12px;
+  /* The pin is the visual; a transparent ring round it is the tap target.
+     Padding the box instead would change what its -50%/-100% translate
+     measures, and correcting that needs calc() — which GSAP cannot parse
+     when it folds the translate into its own transform mid-animation. */
+  .pin-marker::after {
+    content: '';
+    position: absolute;
+    inset: -12px;
   }
 
   .pin-delete {
-    font-size: 22px;
-    padding: 4px 10px;
-    margin: -4px -6px -4px 0;
+    padding: 8px;
+    margin: -8px -10px -6px 0;
   }
 
   .collab-swatch:hover,
   .swatch:hover,
   .welcome-swatch:hover {
     transform: none;
+  }
+
+  .tool-btn:hover,
+  .collab-tool-btn:hover,
+  .collab-ctrl-btn:hover {
+    background-color: transparent;
   }
 
   /* iOS zooms the whole page when focusing an input under 16px, which leaves
@@ -1898,6 +2400,10 @@ input {
   .room-input,
   .pin-text-input {
     font-size: 16px;
+  }
+
+  .field-input {
+    font-size: 20px;
   }
 
   /* Long-pressing a control should not raise iOS's copy/share callout. */
@@ -1919,12 +2425,26 @@ button {
 
 @media (max-width: 640px) {
   .welcome-card {
-    padding: 30px 22px;
+    padding: 34px 22px 30px;
     gap: 22px;
   }
 
-  .welcome-logo {
-    font-size: 30px;
+  .logo-word {
+    font-size: 34px;
+  }
+
+  .welcome-card > .tape-left,
+  .welcome-card > .tape-right {
+    width: 72px;
+    height: 22px;
+  }
+
+  .welcome-card > .tape-left {
+    left: -22px;
+  }
+
+  .welcome-card > .tape-right {
+    right: -22px;
   }
 
   /* Flanking arrows would take a third of the row on a phone. Swiping and the
@@ -1933,14 +2453,18 @@ button {
     display: none;
   }
 
+  .avatar-picker {
+    gap: 18px;
+  }
+
   /* Wrapped onto several rows, the bar needs the full width and a tighter top. */
   .collab-toolbar {
     top: 8px;
     left: 8px;
     right: 8px;
-    transform: none;
+    width: auto;
+    margin: 0;
     max-width: none;
-    border-radius: 10px;
     row-gap: 7px;
   }
 
@@ -1968,7 +2492,7 @@ button {
     bottom: 8px;
     left: 8px;
     right: 8px;
-    translate: none;
+    margin: 0;
     width: auto;
     max-height: 80dvh;
   }
@@ -1992,57 +2516,62 @@ button {
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
   overflow: hidden;
 }
 
 .game-header {
+  position: relative;
+  z-index: 2;
   height: 48px;
-  padding: 0 14px;
+  padding: 0 12px;
   display: flex;
   align-items: center;
   gap: 10px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--paper) var(--grain);
+  box-shadow: var(--lift-1);
   flex-shrink: 0;
 }
 
 .game-logo {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 800;
-  color: var(--accent);
-  letter-spacing: -0.4px;
+  color: var(--blue);
+  --infm: 90;
+  --bnce: 30;
 }
 
 .game-code {
-  font-family: ui-monospace, Consolas, monospace;
-  font-size: 12px;
-  color: var(--text-dim);
+  font-family: var(--type);
+  font-size: 13px;
+  color: var(--ink-soft);
   letter-spacing: 1px;
 }
 
 .game-round {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-family: var(--type);
+  font-size: 12px;
+  color: var(--ink-soft);
   white-space: nowrap;
 }
 
+/* The clock is a stamped circle; under ten seconds it turns red and ticks. */
 .game-clock {
-  min-width: 38px;
+  min-width: 40px;
   text-align: center;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  font-size: 12px;
+  padding: 2px 8px;
+  border: 1.5px solid var(--ink-soft);
+  border-radius: 50% 46% 52% 48% / 52% 50% 48% 50%;
+  font-family: var(--type);
+  font-size: 13px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--text);
+  color: var(--ink);
 }
 
 .game-clock.urgent {
-  color: #ff6b6b;
-  border-color: rgba(255, 107, 107, 0.5);
+  color: var(--red);
+  border-color: var(--red);
+  animation: clock-tick 1s ease-in-out infinite;
 }
 
 /* Centred in the bar rather than tucked in a corner — it is the thing every
@@ -2055,68 +2584,78 @@ button {
   justify-content: center;
 }
 
-/* Monospaced so the underscores line up as letters are revealed. */
+/* Typed, so the blanks line up like a worksheet as letters are revealed. */
 .game-word {
-  font-family: ui-monospace, Consolas, monospace;
-  font-size: 20px;
+  font-family: var(--type);
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: 4px;
-  color: var(--text);
+  letter-spacing: 5px;
+  color: var(--ink);
   white-space: nowrap;
 }
 
 .game-word.drawer {
-  color: var(--accent);
+  color: var(--blue);
 }
 
+/* The answer, gone over with a highlighter. */
 .game-word.reveal {
-  color: #2ed573;
+  color: var(--green);
+  padding: 0 4px;
+  background: linear-gradient(transparent 52%, var(--marker-soft) 52% 92%, transparent 92%);
 }
 
+/* Three sheets laid side by side on the desk. */
 .game-body {
   flex: 1;
   min-height: 0;
   display: flex;
-  gap: 1px;
-  background: var(--border);
+  gap: 10px;
+  padding: 10px;
 }
 
+/* The score sheet. */
 .game-players {
   width: 230px;
   flex-shrink: 0;
-  background: var(--surface);
+  background: var(--paper) var(--grain);
+  border-radius: 2px;
+  box-shadow: var(--lift-1);
   overflow-y: auto;
-  padding: 8px;
+  padding: 6px 10px 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 58, 38, 0.3) transparent;
 }
 
 .game-player {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px;
-  border-radius: 8px;
-  border: 1px solid transparent;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--ruled);
+  transition: background-color 0.15s;
 }
 
+/* Got it: a swipe of green highlighter across the row. */
 .game-player.guessed {
-  background: rgba(46, 213, 115, 0.1);
-  border-color: rgba(46, 213, 115, 0.35);
+  background-image: linear-gradient(transparent 14%, rgba(77, 154, 74, 0.18) 14% 86%, transparent 86%);
 }
 
+/* Drawing: a blue mark in the margin. */
 .game-player.drawing {
-  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--blue);
 }
 
 .game-player.focus {
-  background: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 222, 89, 0.28);
 }
 
 .game-rank {
-  font-size: 10px;
-  color: var(--text-dim);
+  font-family: var(--type);
+  font-size: 11px;
+  color: var(--ink-faint);
   width: 12px;
   flex-shrink: 0;
 }
@@ -2124,31 +2663,31 @@ button {
 .game-player-name {
   flex: 1;
   min-width: 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .game-score {
-  font-size: 12px;
+  font-family: var(--type);
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
 .game-tick {
-  color: #2ed573;
-  font-size: 12px;
+  display: flex;
+  color: var(--green);
 }
 
 .game-stage {
   position: relative;
   flex: 1;
   min-width: 0;
-  background: #1c1c24;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2159,27 +2698,60 @@ button {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   max-width: 100%;
   max-height: 100%;
+}
+
+/* The turn's sheet, taped down at the top corners. Isolated, so the
+   canvas's multiply only ever blends with this paper. */
+.game-sheet {
+  position: relative;
+  isolation: isolate;
+  background: var(--paper) var(--grain);
+  border-radius: 2px;
+  box-shadow: var(--lift-2);
+}
+
+.game-sheet > .tape {
+  width: 76px;
+  height: 22px;
+}
+
+.game-sheet > .tape-left {
+  top: -8px;
+  left: -22px;
+  rotate: -36deg;
+}
+
+.game-sheet > .tape-right {
+  top: -8px;
+  right: -22px;
+  rotate: 38deg;
 }
 
 .game-canvas {
   width: 100%;
   max-height: 100%;
   aspect-ratio: 3 / 2;
-  background: #fff;
-  border-radius: 10px;
+  border-radius: 2px;
   display: block;
   touch-action: none;
+  mix-blend-mode: multiply;
 }
 
+/* The drawer's tools, on a strip of card below the sheet. */
 .game-tools {
+  align-self: center;
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
+  padding: 4px 10px;
+  background: var(--paper-warm) var(--grain);
+  border-radius: 3px;
+  box-shadow: var(--lift-1);
 }
 
 .game-tool-group,
@@ -2190,6 +2762,10 @@ button {
   gap: 4px;
 }
 
+.game-swatches {
+  gap: 5px;
+}
+
 .game-size {
   width: 30px;
   height: 30px;
@@ -2197,23 +2773,27 @@ button {
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: none;
+  border-radius: 50%;
+  transition: background-color 0.12s;
+}
+
+.game-size:hover {
+  background: var(--paper-shade);
 }
 
 .game-size span {
   display: block;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--ink-faint);
 }
 
 .game-size.active {
-  border-color: var(--accent);
-  background: var(--accent-dim);
+  background: var(--marker);
 }
 
 .game-size.active span {
-  background: var(--text);
+  background: var(--ink);
 }
 
 .game-watching {
@@ -2221,13 +2801,13 @@ button {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1.4px;
-  color: var(--text-dim);
+  font-family: var(--type);
+  font-size: 12px;
+  color: var(--ink-soft);
 }
 
-/* Anything that interrupts play covers the canvas. */
+/* Anything that interrupts play covers the canvas with a sheet of vellum:
+   translucent, so the drawing still shows faintly underneath. */
 .game-overlay {
   position: absolute;
   inset: 10px;
@@ -2238,26 +2818,31 @@ button {
   gap: 12px;
   padding: 24px;
   text-align: center;
-  background: rgba(11, 11, 16, 0.88);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-radius: 10px;
+  background: rgba(251, 248, 241, 0.86);
+  backdrop-filter: blur(5px) saturate(0.85);
+  -webkit-backdrop-filter: blur(5px) saturate(0.85);
+  border-radius: 3px;
+  box-shadow: var(--lift-2);
   z-index: 5;
+  animation: vellum-in 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) both;
 }
 
 .game-overlay.soft {
-  background: rgba(11, 11, 16, 0.6);
+  background: rgba(251, 248, 241, 0.62);
 }
 
 .game-overlay h2 {
-  font-size: 19px;
-  font-weight: 700;
-  color: var(--text);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+  --infm: 90;
+  --bnce: 30;
+  color: var(--ink);
 }
 
 .game-overlay p {
-  font-size: 13px;
-  color: var(--text-muted);
+  font-size: 14px;
+  color: var(--ink-soft);
   max-width: 340px;
   line-height: 1.6;
 }
@@ -2269,7 +2854,7 @@ button {
 
 .game-choices {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -2278,35 +2863,48 @@ button {
   min-width: 110px;
 }
 
+/* The guess log: notebook paper whose rules match the line height, so every
+   message is written on a line. */
 .game-chat {
   width: 250px;
   flex-shrink: 0;
-  background: var(--surface);
+  background: var(--paper) var(--grain);
+  border-radius: 2px;
+  box-shadow: var(--lift-1);
   display: flex;
   flex-direction: column;
   min-height: 0;
   position: relative;
+  overflow: hidden;
 }
 
 .game-feed {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 10px 12px 10px 36px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  line-height: 22px;
+  background-image:
+    linear-gradient(90deg, transparent 25px, var(--margin-line) 25px 26px, transparent 26px),
+    repeating-linear-gradient(transparent 0 21px, var(--ruled) 21px 22px);
+  background-position: 0 0, 0 10px;
+  background-attachment: local;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 58, 38, 0.3) transparent;
 }
 
 .game-msg {
-  font-size: 12px;
-  color: var(--text);
-  line-height: 1.45;
+  font-size: 13px;
+  color: var(--ink);
   overflow-wrap: anywhere;
+  animation: write-in 0.25s ease-out;
 }
 
 .game-msg.sys {
-  color: var(--text-dim);
-  font-style: italic;
+  font-family: var(--type);
+  font-size: 12px;
+  color: var(--ink-faint);
 }
 
 .game-msg-author {
@@ -2314,40 +2912,54 @@ button {
   margin-right: 5px;
 }
 
-.text-bar.near .text-input {
-  border-color: #ffd32a;
+.game-chat .text-bar {
+  padding: 8px 10px;
 }
 
+.text-bar.near .text-input {
+  border-bottom-color: #d9a400;
+  background-color: rgba(255, 222, 89, 0.3);
+}
+
+/* A scrap of highlighter-yellow card, slapped down at an angle. */
 .game-near {
   position: absolute;
-  bottom: 52px;
-  left: 10px;
-  right: 10px;
-  padding: 5px 10px;
-  border-radius: 6px;
-  background: rgba(255, 211, 42, 0.15);
-  border: 1px solid rgba(255, 211, 42, 0.45);
-  color: #ffd32a;
-  font-size: 11px;
-  font-weight: 700;
-  text-align: center;
+  bottom: 58px;
+  left: 50%;
+  translate: -50% 0;
+  padding: 3px 14px;
+  background: var(--marker);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 800;
+  --infm: 100;
+  --bnce: 50;
+  white-space: nowrap;
+  box-shadow: var(--lift-2);
+  rotate: -3deg;
+  animation: wobble-in 0.5s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
 
 /* Stack the three columns on a phone. */
 @media (max-width: 860px) {
   .game-body {
     flex-direction: column;
+    gap: 6px;
+    padding: 6px;
   }
 
   .game-players {
     width: auto;
     flex-direction: row;
     overflow-x: auto;
-    padding: 6px;
+    padding: 4px 6px;
   }
 
   .game-player {
     flex-shrink: 0;
+    border-bottom: none;
+    border-right: 1px solid var(--ruled);
+    padding: 4px 8px;
   }
 
   .game-player-name {
@@ -2357,6 +2969,24 @@ button {
   .game-stage {
     flex: 0 0 auto;
     padding: 8px;
+  }
+
+  /* Stacked, the sheet has no margin round it, so corner tape would reach
+     out over the score strip. It lies along the top edge instead. */
+  .game-sheet > .tape {
+    top: -7px;
+    width: 56px;
+    height: 18px;
+  }
+
+  .game-sheet > .tape-left {
+    left: 12px;
+    rotate: -6deg;
+  }
+
+  .game-sheet > .tape-right {
+    right: 12px;
+    rotate: 5deg;
   }
 
   .game-chat {
@@ -2375,8 +3005,8 @@ button {
 
 .lead-panel {
   margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  background: var(--pencil-h) top / 100% 4px no-repeat;
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -2390,25 +3020,25 @@ button {
 }
 
 .lead-title {
-  font-size: 9px;
+  font-family: var(--type);
+  font-size: 11.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.3px;
-  color: var(--text-dim);
+  color: var(--ink-soft);
 }
 
 .lead-count {
-  font-size: 10px;
-  color: var(--text-dim);
+  font-family: var(--type);
+  font-size: 10.5px;
+  color: var(--ink-faint);
 }
 
 .lead-empty {
   margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-  font-size: 11px;
+  padding-top: 12px;
+  background: var(--pencil-h) top / 100% 4px no-repeat;
+  font-size: 12px;
   line-height: 1.5;
-  color: var(--text-dim);
+  color: var(--ink-faint);
 }
 
 /* One segment per turn. The 2px gaps keep neighbouring fills from reading as
@@ -2424,17 +3054,18 @@ button {
   min-width: 4px;
   padding: 0;
   border: none;
-  border-radius: 3px;
-  opacity: 0.75;
+  border-radius: 2px;
+  opacity: 0.8;
+  box-shadow: inset 0 0 0 1px rgba(42, 37, 31, 0.2);
   transition: opacity 0.12s, transform 0.12s;
 }
 
 .lead-seg:first-child {
-  border-radius: 5px 3px 3px 5px;
+  border-radius: 4px 2px 2px 4px;
 }
 
 .lead-seg:last-child {
-  border-radius: 3px 5px 5px 3px;
+  border-radius: 2px 4px 4px 2px;
 }
 
 .lead-seg:hover,
@@ -2444,9 +3075,10 @@ button {
 }
 
 .lead-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50% 45% 55% 50%;
+  box-shadow: inset 0 0 0 1px rgba(42, 37, 31, 0.2);
   flex-shrink: 0;
 }
 
@@ -2461,13 +3093,13 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .lead-log-name {
   flex: 1;
   min-width: 0;
-  color: var(--text);
+  color: var(--ink);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2475,8 +3107,9 @@ button {
 }
 
 .lead-log-turn {
-  color: var(--text-dim);
-  font-size: 10px;
+  font-family: var(--type);
+  color: var(--ink-faint);
+  font-size: 10.5px;
 }
 
 /* Reserved space, so showing the tooltip never changes the panel's height. */
@@ -2493,10 +3126,9 @@ button {
   z-index: 3;
   /* Never steal the pointer from the strip that opened it. */
   pointer-events: none;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--card) var(--grain);
+  border-radius: 2px;
+  box-shadow: var(--lift-2);
   padding: 7px 8px;
   display: flex;
   flex-direction: column;
@@ -2504,16 +3136,16 @@ button {
 }
 
 .lead-tip-head {
-  font-size: 10px;
-  color: var(--text-dim);
+  font-family: var(--type);
+  font-size: 10.5px;
+  color: var(--ink-soft);
   display: flex;
   justify-content: space-between;
   gap: 6px;
 }
 
 .lead-tip-word {
-  color: var(--text-muted);
-  font-style: italic;
+  color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -2522,20 +3154,21 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .lead-tip-name {
   flex: 1;
   min-width: 0;
-  color: var(--text);
+  color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .lead-tip-score {
-  color: var(--text-muted);
+  font-family: var(--type);
+  color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2567,9 +3200,6 @@ button {
 
 .podium-col.empty {
   align-self: stretch;
-}
-
-.podium-col.empty {
   visibility: hidden;
 }
 
@@ -2582,16 +3212,20 @@ button {
   position: relative;
 }
 
+/* Gold leaf, outlined in ink. */
 .podium-crown {
-  color: #ffd32a;
-  font-size: 17px;
-  line-height: 1;
+  color: var(--gold);
+  line-height: 0;
+}
+
+.podium-crown svg {
+  stroke: var(--ink);
 }
 
 .podium-name {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--ink);
   max-width: 92px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2599,46 +3233,56 @@ button {
 }
 
 .podium-score {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-family: var(--type);
+  font-size: 12px;
+  color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
+/* Blocks of construction paper: the player's colour comes in as an inline
+   background-color, with grain, a pencil edge and a soft fold of light on top. */
 .podium-block {
   width: 100%;
   flex-shrink: 0;
-  border-radius: 8px 8px 0 0;
+  border-radius: 3px 3px 0 0;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding-top: 6px;
   min-height: 26px;
+  background-image: var(--grain), linear-gradient(rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0) 32%);
+  box-shadow:
+    inset 0 0 0 1.5px rgba(42, 37, 31, 0.32),
+    inset 0 -14px 18px -14px rgba(0, 0, 0, 0.28),
+    var(--lift-1);
 }
 
 .podium-place {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 800;
-  color: rgba(0, 0, 0, 0.45);
+  --infm: 100;
+  color: rgba(0, 0, 0, 0.5);
 }
 
 .game-final-note {
-  font-size: 11px;
-  color: var(--text-dim);
+  font-size: 12px;
+  color: var(--ink-faint);
   max-width: 320px;
   line-height: 1.5;
 }
 
 /* ── Match settings ── */
 
+/* An index card with the rules on it. */
 .settings {
   width: min(340px, 100%);
   display: flex;
   flex-direction: column;
   gap: 9px;
-  padding: 12px 14px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  padding: 12px 14px 14px;
+  background: var(--card) var(--grain);
+  border-radius: 2px;
+  box-shadow: var(--lift-1);
   text-align: left;
 }
 
@@ -2647,18 +3291,18 @@ button {
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  font-size: 10px;
+  padding-bottom: 7px;
+  border-bottom: 2px solid var(--margin-line);
+  font-family: var(--type);
+  font-size: 12.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.3px;
-  color: var(--text-dim);
+  color: var(--ink);
 }
 
 .settings-host {
-  text-transform: none;
-  letter-spacing: 0;
+  font-family: var(--hand);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--blue);
 }
 
 .settings-summary {
@@ -2667,13 +3311,15 @@ button {
   gap: 6px;
 }
 
+/* Little paper tags. */
 .settings-summary span {
-  font-size: 11px;
-  color: var(--text-muted);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 3px 8px;
+  font-family: var(--type);
+  font-size: 11.5px;
+  color: var(--ink);
+  background: var(--paper-warm);
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  padding: 2px 8px;
 }
 
 .settings-row {
@@ -2684,31 +3330,36 @@ button {
 }
 
 .settings-label {
-  font-size: 12px;
-  color: var(--text);
-  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 650;
 }
 
 .settings-stepper {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
 }
 
+/* Typewriter keys again. */
 .settings-stepper button {
-  width: 26px;
-  height: 26px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  background: var(--card);
+  border: 1px solid var(--rule-strong);
+  border-bottom-width: 3px;
+  border-radius: 5px;
+  color: var(--ink);
+  font-family: var(--type);
   font-size: 15px;
+  font-weight: 700;
   line-height: 1;
+  transition: transform 0.06s, border-bottom-width 0.06s;
 }
 
-.settings-stepper button:hover:not(:disabled) {
-  color: var(--text);
-  border-color: var(--border-light);
+.settings-stepper button:active:not(:disabled) {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
 }
 
 .settings-stepper button:disabled {
@@ -2719,20 +3370,23 @@ button {
 .settings-value {
   min-width: 26px;
   text-align: center;
-  font-size: 13px;
+  font-family: var(--type);
+  font-size: 14px;
   font-weight: 700;
-  color: var(--text);
+  color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 
 .settings-select {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  font-size: 12px;
-  padding: 5px 8px;
-  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--paper-warm) var(--select-arrow) no-repeat right 8px center / 10px 7px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  color: var(--ink);
+  font-family: var(--type);
+  font-size: 13px;
+  padding: 4px 26px 4px 9px;
 }
 
 .settings-words {
@@ -2741,27 +3395,32 @@ button {
   gap: 5px;
 }
 
+/* Lined paper to write the word list on: the rules match the line height
+   and scroll with the text. */
 .settings-textarea {
   width: 100%;
   resize: vertical;
   min-height: 46px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  font-family: inherit;
-  font-size: 12px;
-  line-height: 1.5;
-  padding: 7px 9px;
+  background-color: transparent;
+  background-image: repeating-linear-gradient(transparent 0 19px, var(--ruled) 19px 20px);
+  background-attachment: local;
+  border: none;
+  border-left: 2px solid var(--margin-line);
+  border-radius: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 20px;
+  --infm: 55;
+  padding: 0 6px;
   outline: none;
 }
 
 .settings-textarea:focus {
-  border-color: var(--accent);
+  border-left-color: var(--blue);
 }
 
 .settings-textarea::placeholder {
-  color: var(--text-dim);
+  color: var(--ink-faint);
 }
 
 .settings-words-foot {
@@ -2769,8 +3428,9 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 10px;
-  color: var(--text-dim);
+  font-family: var(--type);
+  font-size: 11px;
+  color: var(--ink-soft);
 }
 
 .settings-check {
@@ -2782,7 +3442,7 @@ button {
 }
 
 .settings-check input {
-  accent-color: var(--accent);
+  accent-color: var(--blue);
 }
 
 .settings-check:has(input:disabled) {
@@ -2791,17 +3451,20 @@ button {
 }
 
 .settings-note {
-  font-size: 10px;
-  color: #ffd32a;
+  font-size: 11.5px;
+  color: var(--amber);
   line-height: 1.45;
 }
 
-/* The lobby now carries a panel, so it needs room to scroll on short screens. */
+/* The lobby now carries a panel, so it needs room to scroll on short screens.
+   Both are dense with text, so the vellum is thicker: the last drawing should
+   not show through as smudges behind the podium. */
 .game-overlay.lobby,
 .game-overlay.over {
   overflow-y: auto;
   justify-content: flex-start;
   padding-top: 26px;
+  background: rgba(251, 248, 241, 0.94);
 }
 
 @media (pointer: coarse) {
@@ -2831,21 +3494,21 @@ button {
 }
 
 .chart-empty {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
-  color: var(--text-dim);
+  color: var(--ink-faint);
   padding: 8px 0;
 }
 
 .chart-axis {
-  fill: var(--text-dim);
-  font-size: 8px;
-  font-family: inherit;
+  fill: var(--ink-faint);
+  font-size: 8.5px;
+  font-family: var(--type);
 }
 
 .chart-lead-label {
-  fill: var(--text);
-  font-size: 9px;
+  fill: var(--ink);
+  font-size: 10px;
   font-weight: 700;
   font-family: inherit;
 }
@@ -2857,11 +3520,10 @@ button {
 }
 
 .chart-readout-head {
-  font-size: 9px;
+  font-family: var(--type);
+  font-size: 10.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: var(--text-dim);
+  color: var(--ink-soft);
   margin-bottom: 2px;
 }
 
@@ -2874,38 +3536,39 @@ button {
   padding: 2px 4px;
   background: transparent;
   border: none;
-  border-radius: 5px;
+  border-radius: 2px;
   text-align: left;
 }
 
 .chart-row:hover,
 .chart-row.on {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 222, 89, 0.35);
 }
 
 .chart-row-name {
   flex: 1;
   min-width: 0;
-  font-size: 11px;
-  color: var(--text);
+  font-size: 12px;
+  color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .chart-row-score {
-  font-size: 11px;
+  font-family: var(--type);
+  font-size: 12px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
 .game-final-chart {
   width: min(420px, 100%);
   padding: 12px 14px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  background: var(--card) var(--grain);
+  border-radius: 2px;
+  box-shadow: var(--lift-1);
 }
 
 @media (max-width: 860px) {
@@ -2934,4 +3597,72 @@ button {
   top: 58%;
   display: block;
   will-change: transform, opacity;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.15);
+}
+
+/* ──────────────────────────────────────────
+   MOTION
+   CSS handles the small, self-contained moves; anything sequenced lives in
+   lib/motion.ts. All of it stands down for reduced motion — ending states are
+   kept, so the swash is drawn and the overlays are in place.
+────────────────────────────────────────── */
+
+/* A new line written in. */
+@keyframes write-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
+
+/* A pen circle drawn round a swatch. */
+@keyframes ring-on {
+  from {
+    opacity: 0;
+    transform: scale(1.35) rotate(-30deg);
+  }
+}
+
+@keyframes pen-stroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* A vellum sheet slid over the drawing. */
+@keyframes vellum-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) rotate(-0.8deg);
+  }
+}
+
+@keyframes wobble-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) rotate(8deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06) rotate(-4deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes clock-tick {
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

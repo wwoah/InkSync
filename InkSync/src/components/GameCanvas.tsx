@@ -1,7 +1,8 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { CursorIcon, FillIcon } from './icons'
+import { CursorIcon, EraserIcon, FillIcon, PencilIcon } from './icons'
 import { floodFill } from '../lib/fill'
 import { isTypingTarget } from '../lib/keys'
+import { INKS } from '../lib/palette'
 
 export interface GameOp {
   kind?: 'fill'
@@ -32,11 +33,6 @@ interface Props {
 const W = 1200
 const H = 800
 
-const COLORS = [
-  '#111111', '#ffffff', '#ff4757', '#ff6b2b', '#ffd32a',
-  '#2ed573', '#1e90ff', '#a55eea', '#ff6eb4', '#8395a7',
-]
-
 const SIZES = [4, 10, 20, 34]
 
 type Tool = 'pen' | 'eraser' | 'fill'
@@ -54,7 +50,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, Props>(function GameCanva
   const drawing = useRef(false)
   const last = useRef({ x: 0, y: 0 })
   const [tool, setTool] = useState<Tool>('pen')
-  const [color, setColor] = useState(COLORS[0])
+  const [color, setColor] = useState(INKS[0])
   const [size, setSize] = useState(SIZES[1])
 
   const ctxOf = () => canvasRef.current?.getContext('2d') ?? null
@@ -185,21 +181,27 @@ export const GameCanvas = forwardRef<GameCanvasHandle, Props>(function GameCanva
 
   return (
     <div className="game-canvas-wrap">
-      <canvas
-        ref={canvasRef}
-        width={W}
-        height={H}
-        className="game-canvas"
-        style={{ cursor: canDraw ? 'crosshair' : 'default' }}
-      />
+      {/* The sheet behind the canvas is the paper; the canvas multiplies its
+          ink onto it, so the grain shows through the blank areas. */}
+      <div className="game-sheet">
+        <canvas
+          ref={canvasRef}
+          width={W}
+          height={H}
+          className="game-canvas"
+          style={{ cursor: canDraw ? 'crosshair' : 'default' }}
+        />
+        <span className="tape tape-left" aria-hidden="true" />
+        <span className="tape tape-right" aria-hidden="true" />
+      </div>
 
       {canDraw && (
         <div className="game-tools">
           <div className="game-tool-group">
             {(
               [
-                ['pen', '✏', 'Pen (P)'],
-                ['eraser', '◻', 'Eraser (E)'],
+                ['pen', <PencilIcon key="p" />, 'Pen (P)'],
+                ['eraser', <EraserIcon key="e" />, 'Eraser (E)'],
                 ['fill', <FillIcon key="f" size={14} />, 'Fill (F)'],
               ] as [Tool, React.ReactNode, string][]
             ).map(([id, icon, title]) => (
@@ -215,7 +217,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, Props>(function GameCanva
           </div>
 
           <div className="game-swatches">
-            {COLORS.map((c) => (
+            {INKS.map((c) => (
               <button
                 key={c}
                 className={`swatch ${c === color ? 'selected' : ''}`}
