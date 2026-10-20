@@ -19,13 +19,16 @@ import {
 } from '../components/icons'
 import { InkMark } from '../components/InkMark'
 import { InfoPanel } from '../components/InfoPanel'
+import { SoundToggle } from '../components/SoundToggle'
 import { Wordmark } from '../components/Wordmark'
 import { useBrushSize } from '../hooks/useBrushSize'
 import { useLongPress } from '../hooks/useLongPress'
+import { inkCursor } from '../lib/cursors'
 import { peelOff, prefersReducedMotion, setDown, stickOn } from '../lib/motion'
 import { floodFill } from '../lib/fill'
 import { isTypingTarget } from '../lib/keys'
 import { INKS, onFill, onPaper } from '../lib/palette'
+import { pencil, play } from '../lib/sound'
 import { SERVER_URL } from '../lib/server'
 import type { Message, User } from '../types'
 
@@ -86,7 +89,7 @@ const TOOLS: {
     icon: <CursorIcon />,
     name: 'Select',
     key: 'V',
-    hint: 'Drag to pan the canvas, and click pins to open or close their comments.',
+    hint: 'Drag to pan the canvas, scroll or pinch to zoom, and click pins to open or close their comments.',
   },
   {
     id: 'pen',
@@ -117,14 +120,6 @@ const TOOLS: {
   },
 ]
 
-const CURSORS: Record<Tool, string> = {
-  select: 'grab',
-  pen: 'crosshair',
-  eraser: 'crosshair',
-  fill: 'crosshair',
-  pin: 'cell',
-}
-
 /** Right-dragging paints with the secondary colour; white makes it an eraser. */
 const DEFAULT_ALT_COLOR = '#ffffff'
 
@@ -151,13 +146,42 @@ const CURSOR_STALE_MS = 1500
 const MAX_TOASTS = 3
 const TOAST_MS = 5500
 
-/** Keep the surface covering the viewport, so it can never be dragged off-screen. */
-function clampPan(x: number, y: number) {
-  const minX = Math.min(0, window.innerWidth - SURFACE_W)
-  const minY = Math.min(0, window.innerHeight - SURFACE_H)
+/** How far in you can zoom. The canvas is a bitmap, so past this its pixels show. */
+const MAX_ZOOM = 3
+/** One wheel notch, key press or button step. */
+const ZOOM_STEP = 1.25
+
+/** Where the sheet sits on screen, and at what size. */
+interface View {
+  x: number
+  y: number
+  scale: number
+}
+
+/**
+ * Zoom is bounded by the screen: out until the whole sheet fits, but never
+ * below 100% on a screen bigger than the sheet itself.
+ */
+function limitZoom(scale: number) {
+  const fit = Math.min(window.innerWidth / SURFACE_W, window.innerHeight / SURFACE_H)
+  return Math.min(MAX_ZOOM, Math.max(Math.min(1, fit), scale))
+}
+
+/**
+ * Keep the sheet covering the viewport, so it can never be dragged off-screen.
+ * Zoomed out until it is smaller than the screen on an axis, it sits centred
+ * on that axis instead, with the desk showing round it.
+ */
+function clampView(x: number, y: number, scale: number): View {
+  const s = limitZoom(scale)
+  const w = SURFACE_W * s
+  const h = SURFACE_H * s
+  const vw = window.innerWidth
+  const vh = window.innerHeight
   return {
-    x: Math.min(0, Math.max(minX, x)),
-    y: Math.min(0, Math.max(minY, y)),
+    x: w <= vw ? (vw - w) / 2 : Math.min(0, Math.max(vw - w, x)),
+    y: h <= vh ? (vh - h) / 2 : Math.min(0, Math.max(vh - h, y)),
+    scale: s,
   }
 }
 
@@ -182,6 +206,18 @@ function gesturePoint(e: MouseEvent | TouchEvent) {
     return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 }
   }
   return clientPoint(e)
+}
+
+/** The spread between two fingers, for pinching. */
+function touchDistance(e: MouseEvent | TouchEvent) {
+  if (!('touches' in e) || e.touches.length < 2) return 1
+  const [a, b] = [e.touches[0], e.touches[1]]
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1
+}
+
+/** Wheel distance in pixels, whatever unit the device reports it in. */
+function wheelPixels(e: WheelEvent) {
+  return e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY
 }
 
 /**
@@ -261,6 +297,7 @@ function PinMarker({
 
   useEffect(() => {
     if (!open || prefersReducedMotion()) return
+    play('stick')
     const ctx = gsap.context(() => {
       stickOn(bubbleRef.current)
     }, bubbleRef)
@@ -430,17 +467,29 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
     canvasRef,
   })
 
-  // Start centred on the surface.
-  const [pan, setPan] = useState(() =>
-    clampPan((window.innerWidth - SURFACE_W) / 2, (window.innerHeight - SURFACE_H) / 2)
+  // Start centred on the surface, at 100%.
+  const [view, setView] = useState(() =>
+    clampView((window.innerWidth - SURFACE_W) / 2, (window.innerHeight - SURFACE_H) / 2, 1)
   )
-  const panRef = useRef(pan)
-  const panStart = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
+  const viewRef = useRef(view)
+  /**
+   * Where a drag or pinch began, and the view at that moment. `pinch` is set
+   * only for two fingers under the select tool — two fingers pan with any
+   * tool, but only Select may zoom.
+   */
+  const panStart = useRef<{
+    x: number
+    y: number
+    ox: number
+    oy: number
+    pinch: { dist: number; scale: number } | null
+  } | null>(null)
   const panMoved = useRef(false)
   const [panning, setPanning] = useState(false)
 
   /** Opening the panel counts as reading everything waiting in it. */
   const showChat = useCallback((next: boolean) => {
+    if (next !== chatOpenRef.current) play('rustle', { gain: 0.7 })
     chatOpenRef.current = next
     setChatOpen(next)
     if (next) {
@@ -451,17 +500,58 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
 
   const toggleChat = useCallback(() => showChat(!chatOpenRef.current), [showChat])
 
-  const applyPan = useCallback((x: number, y: number) => {
-    const next = clampPan(x, y)
-    panRef.current = next
-    setPan(next)
+  const applyView = useCallback((x: number, y: number, scale: number) => {
+    const next = clampView(x, y, scale)
+    viewRef.current = next
+    setView(next)
   }, [])
 
+  /** Zooms to `scale`, keeping the sheet point under (cx, cy) where it is on screen. */
+  const zoomAt = useCallback(
+    (cx: number, cy: number, scale: number) => {
+      const v = viewRef.current
+      const k = limitZoom(scale) / v.scale
+      applyView(cx - (cx - v.x) * k, cy - (cy - v.y) * k, v.scale * k)
+    },
+    [applyView]
+  )
+
+  /** Back to 100%, eased, around the middle of the screen. */
+  const resetZoom = useCallback(() => {
+    const zoom = { scale: viewRef.current.scale }
+    const cx = window.innerWidth / 2
+    const cy = window.innerHeight / 2
+    gsap.to(zoom, {
+      scale: 1,
+      duration: prefersReducedMotion() ? 0 : 0.35,
+      ease: 'power2.inOut',
+      onUpdate: () => zoomAt(cx, cy, zoom.scale),
+    })
+  }, [zoomAt])
+
   useEffect(() => {
-    const onResize = () => applyPan(panRef.current.x, panRef.current.y)
+    const onResize = () => applyView(viewRef.current.x, viewRef.current.y, viewRef.current.scale)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [applyPan])
+  }, [applyView])
+
+  // Wheel and trackpad zoom, under the select tool only. With the pen or
+  // eraser the wheel sizes the brush instead (useBrushSize), so the two never
+  // compete: each stands down unless its own tool is in hand.
+  useEffect(() => {
+    if (tool !== 'select') return
+    const onWheel = (e: WheelEvent) => {
+      // The toolbar, chat and panels keep their own scrolling.
+      const over = e.target as Element | null
+      if (over?.closest?.('.collab-toolbar, .collab-chat, .info-panel, .info-backdrop, .collab-toasts')) return
+      e.preventDefault()
+      // A trackpad pinch arrives as ctrl+wheel in small steps; a mouse notch is ~100px.
+      const rate = e.ctrlKey ? 0.01 : 0.0015
+      zoomAt(e.clientX, e.clientY, viewRef.current.scale * Math.exp(-wheelPixels(e) * rate))
+    }
+    window.addEventListener('wheel', onWheel, { passive: false })
+    return () => window.removeEventListener('wheel', onWheel)
+  }, [tool, zoomAt])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -572,15 +662,23 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
       if (ctx) applyOp(ctx, op)
     })
 
-    socket.on('canvas_pin', (pin: Pin) => setPins((p) => [...p, pin]))
+    // Other people's pins and notes are heard a little quieter than your own.
+    socket.on('canvas_pin', (pin: Pin) => {
+      setPins((p) => [...p, pin])
+      play('pin', { gain: pin.user.username === user.username ? 1 : 0.6 })
+    })
 
     socket.on('canvas_pin_removed', ({ id }: { id: string }) => {
       setActivePin((cur) => (cur === id ? null : cur))
       setLeavingPins((l) => (l.includes(id) ? l : [...l, id]))
+      play('unpin')
     })
 
     socket.on('canvas_message', (msg: Message) => {
       setMessages((prev) => [...prev, msg])
+      if (msg.user && msg.user.username !== user.username) {
+        play('note', { gain: chatOpenRef.current ? 0.7 : 1 })
+      }
       // Only announce what the open panel wouldn't already be showing, and
       // only for things a person actually said.
       if (chatOpenRef.current || msg.type !== 'text' || !msg.user) return
@@ -621,8 +719,16 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
         // stroke — a pan should not leave a scribble behind. Undo is by
         // strokeId, so this lifts exactly the mark just made, for everyone.
         if (isDrawing.current && didDraw.current) undo()
+        if (isDrawing.current) pencil.end()
         isDrawing.current = false
-        panStart.current = { x: p.x, y: p.y, ox: panRef.current.x, oy: panRef.current.y }
+        const v = viewRef.current
+        panStart.current = {
+          x: p.x,
+          y: p.y,
+          ox: v.x,
+          oy: v.y,
+          pinch: twoFinger && tool === 'select' ? { dist: touchDistance(e), scale: v.scale } : null,
+        }
         panMoved.current = false
         setPanning(true)
         return
@@ -637,6 +743,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
         if (!canvas || !ctx) return
         const pos = getCanvasPos(e, canvas)
         if (!floodFill(ctx, pos.x, pos.y, paint)) return
+        play('pour')
         socketRef.current?.emit('canvas_fill', {
           kind: 'fill',
           x: pos.x,
@@ -666,18 +773,30 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
       strokeColor.current = paint
       strokeId.current = newStrokeId()
       lastPos.current = getCanvasPos(e, canvas)
+      pencil.start(tool === 'eraser' ? 'eraser' : 'pen', e)
     },
     [tool, color, altColor, undo]
   )
 
   const handleMouseMove = useCallback(
     (e: MouseEvent | TouchEvent) => {
-      if (panStart.current) {
+      const start = panStart.current
+      if (start) {
         const p = gesturePoint(e)
-        const dx = p.x - panStart.current.x
-        const dy = p.y - panStart.current.y
+        if (start.pinch && touchCount(e) >= 2) {
+          // The sheet point first held between the fingers stays between
+          // them as they spread and travel.
+          const scale = limitZoom((start.pinch.scale * touchDistance(e)) / start.pinch.dist)
+          const sx = (start.x - start.ox) / start.pinch.scale
+          const sy = (start.y - start.oy) / start.pinch.scale
+          panMoved.current = true
+          applyView(p.x - sx * scale, p.y - sy * scale, scale)
+          return
+        }
+        const dx = p.x - start.x
+        const dy = p.y - start.y
         if (Math.abs(dx) > CLICK_SLOP || Math.abs(dy) > CLICK_SLOP) panMoved.current = true
-        applyPan(panStart.current.ox + dx, panStart.current.oy + dy)
+        applyView(start.ox + dx, start.oy + dy, viewRef.current.scale)
         return
       }
       if (!isDrawing.current) return
@@ -700,6 +819,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
       socketRef.current?.emit('canvas_draw', seg)
       didDraw.current = true
       lastPos.current = pos
+      pencil.move(e)
 
       // Cursors ride along with the strokes, so they only ever show up for
       // someone actively drawing — no idle pointers cluttering the canvas.
@@ -712,13 +832,22 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
         })
       }
     },
-    [applyPan, size, tool]
+    [applyView, size, tool]
   )
 
   const handleMouseUp = useCallback((e?: MouseEvent | TouchEvent) => {
     // touchend fires as each finger lifts. Keep panning until the last one is
-    // up, otherwise releasing one of two fingers would drop the gesture.
-    if (e && touchCount(e) > 0) return
+    // up, otherwise releasing one of two fingers would drop the gesture — but
+    // re-anchor on the finger still down, or the sheet would jump from the
+    // old midpoint to it. Any pinch ends here; one finger only pans.
+    if (e && touchCount(e) > 0) {
+      if (panStart.current) {
+        const p = gesturePoint(e)
+        const v = viewRef.current
+        panStart.current = { x: p.x, y: p.y, ox: v.x, oy: v.y, pinch: null }
+      }
+      return
+    }
 
     if (panStart.current) {
       panStart.current = null
@@ -730,6 +859,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
     }
     if (!isDrawing.current) return
     isDrawing.current = false
+    pencil.end()
     if (didDraw.current) socketRef.current?.emit('canvas_cursor_end')
   }, [])
 
@@ -794,11 +924,21 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
       if (key === '?' || key === '/') {
         e.preventDefault()
         setInfoOpen((o) => !o)
+        return
+      }
+      // Zoom keys answer to the select tool only, like the wheel and pinch.
+      if (tool === 'select' && ['=', '+', '-', '_', '0'].includes(key)) {
+        e.preventDefault()
+        if (key === '0') resetZoom()
+        else {
+          const step = key === '-' || key === '_' ? 1 / ZOOM_STEP : ZOOM_STEP
+          zoomAt(window.innerWidth / 2, window.innerHeight / 2, viewRef.current.scale * step)
+        }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [toggleChat, undo, redo])
+  }, [toggleChat, undo, redo, tool, zoomAt, resetZoom])
 
   useEffect(() => {
     if (chatOpen) chatInputRef.current?.focus()
@@ -820,6 +960,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
   // The toolbar is set down like a strip of card once the canvas is up.
   useEffect(() => {
     if (full !== null || prefersReducedMotion()) return
+    play('rustle', { delay: 0.2 })
     const ctx = gsap.context(() => {
       setDown(toolbarRef.current, { lift: 70, tilt: -2.5 })
     }, toolbarRef)
@@ -838,6 +979,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
     if (!t) return
     socketRef.current?.emit('canvas_chat', { text: t })
     setChatText('')
+    play('flick')
   }
 
   useEffect(() => {
@@ -887,7 +1029,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
         style={{
           width: SURFACE_W,
           height: SURFACE_H,
-          transform: `translate3d(${pan.x}px, ${pan.y}px, 0)`,
+          transform: `translate3d(${view.x}px, ${view.y}px, 0) scale(${view.scale})`,
         }}
       >
         <canvas
@@ -895,10 +1037,22 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
           width={SURFACE_W}
           height={SURFACE_H}
           className="collab-canvas"
-          style={{ cursor: panning ? 'grabbing' : CURSORS[tool] }}
+          style={{ cursor: inkCursor(panning ? 'pan' : tool, color) }}
         />
+      </div>
 
-        {/* Pin markers — inside the surface, so they pan with the drawing */}
+      {/* What sits on the sheet: pins, live cursors, the comment being
+          written. Not inside the scaled surface, but a sibling sized to it,
+          so percentage positions still land on the drawing while the marks
+          themselves stay crisp and the same size at any zoom. */}
+      <div
+        className="collab-marks"
+        style={{
+          width: SURFACE_W * view.scale,
+          height: SURFACE_H * view.scale,
+          transform: `translate(${Math.round(view.x)}px, ${Math.round(view.y)}px)`,
+        }}
+      >
         {pins.map((pin) => (
           <PinMarker
             key={pin.id}
@@ -947,7 +1101,13 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
               autoFocus
             />
             <div className="pin-input-row">
-              <button className="pin-confirm-btn" onClick={submitPin} disabled={!pinText.trim()}>
+              {/* Silent: the pin's own thock follows as soon as it lands. */}
+              <button
+                className="pin-confirm-btn"
+                data-sound="none"
+                onClick={submitPin}
+                disabled={!pinText.trim()}
+              >
                 Pin
               </button>
               <button className="pin-cancel-btn" onClick={() => setPendingPin(null)}>
@@ -964,6 +1124,14 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
         label={size}
         color={tool === 'eraser' ? ERASER_PREVIEW : color}
       />
+
+      {/* Only while zoomed: how far, and a way straight back to 100% from
+          any tool, since zooming in needs Select but drawing doesn't. */}
+      {Math.abs(view.scale - 1) > 0.005 && (
+        <button className="collab-zoom" onClick={resetZoom} title="Back to 100% (0)">
+          {Math.round(view.scale * 100)}%
+        </button>
+      )}
 
       {/* Unread chat, only while the panel is closed */}
       {!chatOpen && toasts.length > 0 && (
@@ -1089,6 +1257,7 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
 
         <button
           className={`collab-ctrl-btn ${chatOpen ? 'hi' : ''}`}
+          data-sound="none"
           onClick={toggleChat}
           title="Toggle chat (M)"
           aria-label="Toggle chat"
@@ -1098,6 +1267,8 @@ export function CollabCanvas({ user, canvasId, onLeave }: Props) {
             <span className="collab-unread">{unread > 9 ? '9+' : unread}</span>
           )}
         </button>
+
+        <SoundToggle className="collab-ctrl-btn" />
       </div>
 
       <InfoPanel open={infoOpen} onClose={() => setInfoOpen(false)} tools={TOOLS} />

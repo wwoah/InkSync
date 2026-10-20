@@ -4,6 +4,7 @@ import gsap from 'gsap'
 import { ChevronIcon } from './icons'
 import { prefersReducedMotion } from '../lib/motion'
 import { isTypingTarget } from '../lib/keys'
+import { play } from '../lib/sound'
 
 export interface Slide {
   key: string
@@ -55,6 +56,8 @@ export function Carousel({ slides }: { slides: Slide[] }) {
   const touch = useRef<{ x: number; y: number } | null>(null)
   /** Where each slide currently sits, so a move knows how far it is travelling. */
   const placed = useRef<number[]>([])
+  /** The slide last dealt, so only a real change of slide makes a sound. */
+  const dealt = useRef<number | null>(null)
 
   const count = slides.length
   const go = (step: number) => setIndex((i) => (((i + step) % count) + count) % count)
@@ -78,6 +81,12 @@ export function Carousel({ slides }: { slides: Slide[] }) {
     const kids = Array.from(track.children) as HTMLElement[]
     const firstRun = placed.current.length === 0
     const still = prefersReducedMotion()
+    // One flick per deal, however it was asked for — arrow, dot, key or
+    // swipe — which is why the arrows and dots opt out of the press sound.
+    // Compared with the last index rather than keyed off firstRun, because
+    // StrictMode re-runs this on mount with `placed` already filled in.
+    if (dealt.current !== null && dealt.current !== index) play('flick')
+    dealt.current = index
 
     const tweens = kids.map((el, j) => {
       const next = slotOffset(j, index, count)
@@ -124,6 +133,7 @@ export function Carousel({ slides }: { slides: Slide[] }) {
   const arrow = (dir: -1 | 1) => (
     <button
       className="carousel-arrow"
+      data-sound="none"
       onClick={() => go(dir)}
       aria-label={dir < 0 ? 'Previous option' : 'Next option'}
     >
@@ -175,6 +185,7 @@ export function Carousel({ slides }: { slides: Slide[] }) {
           <button
             key={s.key}
             className={`carousel-dot ${i === index ? 'on' : ''}`}
+            data-sound="none"
             onClick={() => setIndex(i)}
             role="tab"
             aria-selected={i === index}

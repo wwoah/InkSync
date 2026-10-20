@@ -8,8 +8,10 @@ import { Avatar } from '../components/Avatar'
 import { BulbIcon, LockIcon, SheetIcon } from '../components/icons'
 import { DEFAULT_AVATAR, normalizeAvatar } from '../lib/avatar'
 import { saveProfile } from '../lib/profile'
+import { SoundToggle } from '../components/SoundToggle'
 import { prefersReducedMotion, setDown } from '../lib/motion'
 import { PLAYER_COLORS, onPaper } from '../lib/palette'
+import { play } from '../lib/sound'
 import type { User } from '../types'
 
 interface Props {
@@ -195,6 +197,11 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }
   // effects can be the previous tween's opacity: 0 — leaving it stuck hidden.
   useEffect(() => {
     if (prefersReducedMotion()) return
+    // Heard only when coming back to this page: on a first visit nothing has
+    // been clicked yet, so the browser still has audio locked.
+    play('rustle')
+    play('tape', { delay: 0.44 })
+    play('tape', { delay: 0.56 })
     const ctx = gsap.context(() => {
       setDown(cardRef.current)
       gsap.fromTo(
@@ -242,6 +249,7 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }
     // Remember the face for next time before leaving this step.
     saveProfile(user)
     setStep('destination')
+    play('rustle', { delay: 0.05 })
   }
 
   return (
@@ -249,6 +257,7 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }
       <div className="welcome-card" ref={cardRef}>
         <span className="tape tape-left" aria-hidden="true" />
         <span className="tape tape-right" aria-hidden="true" />
+        <SoundToggle />
         <Wordmark />
         <p className="welcome-sub">draw and share live.</p>
 
@@ -300,6 +309,7 @@ export function Welcome({ initialUser, onEnterCanvas, onEnterRoom, onEnterGame }
               <span className="identity-name" style={{ color: onPaper(color) }}>{trimmed}</span>
               <button
                 className="identity-edit"
+                data-sound="rustle"
                 onClick={() => setStep('identity')}
               >
                 edit

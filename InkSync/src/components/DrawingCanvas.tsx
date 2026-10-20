@@ -14,10 +14,12 @@ import { InfoPanel } from './InfoPanel'
 import type { ReactNode } from 'react'
 import { useBrushSize } from '../hooks/useBrushSize'
 import { useLongPress } from '../hooks/useLongPress'
+import { inkCursor } from '../lib/cursors'
 import { floodFill } from '../lib/fill'
 import { isTypingTarget } from '../lib/keys'
 import { crumple, prefersReducedMotion } from '../lib/motion'
 import { INKS } from '../lib/palette'
+import { pencil, play } from '../lib/sound'
 
 interface Props {
   onSendDrawing: (dataUrl: string) => void
@@ -161,7 +163,8 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
         if (!ctx) return
         const pos = getPos(e, canvas)
         pushHistory()
-        if (!floodFill(ctx, pos.x, pos.y, paint)) undoStack.current.pop()
+        if (floodFill(ctx, pos.x, pos.y, paint)) play('pour')
+        else undoStack.current.pop()
         return
       }
 
@@ -169,6 +172,7 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
       isDrawing.current = true
       strokeColor.current = paint
       lastPos.current = getPos(e, canvas)
+      pencil.start(tool === 'eraser' ? 'eraser' : 'pen', e)
     },
     [tool, color, altColor, pushHistory]
   )
@@ -191,11 +195,13 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
       ctx.lineJoin = 'round'
       ctx.stroke()
       lastPos.current = pos
+      pencil.move(e)
     },
     [tool, size]
   )
 
   const stopDraw = useCallback(() => {
+    if (isDrawing.current) pencil.end()
     isDrawing.current = false
   }, [])
 
@@ -280,6 +286,7 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+    play(fate === 'send' ? 'whoosh' : 'crumple')
     if (!prefersReducedMotion()) {
       setScrap({ id: Date.now(), src: snapshot ?? canvas.toDataURL('image/png'), fate })
     }
@@ -305,7 +312,7 @@ export function DrawingCanvas({ onSendDrawing }: Props) {
           width={1400}
           height={560}
           className="drawing-canvas"
-          style={{ cursor: tool === 'select' ? 'default' : 'crosshair' }}
+          style={{ cursor: inkCursor(tool, color) }}
         />
         {scrap && (
           <div key={scrap.id} ref={scrapRef} className="canvas-scrap" aria-hidden="true">

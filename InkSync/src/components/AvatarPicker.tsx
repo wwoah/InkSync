@@ -25,6 +25,7 @@ export function AvatarPicker({ color, avatar, onChange, owned }: Props) {
         <Avatar color={color} avatar={avatar} size={96} />
         <button
           className="avatar-dice"
+          data-sound="dice"
           onClick={() => onChange(randomAvatar(owned))}
           title="Surprise me"
           aria-label="Randomise avatar"

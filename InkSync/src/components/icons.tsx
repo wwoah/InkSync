@@ -239,6 +239,24 @@ export function TouchIcon({ size = 15 }: { size?: number }) {
   )
 }
 
+export function SoundOnIcon({ size = 15 }: { size?: number }) {
+  return (
+    <Pen size={size}>
+      <path d="M2.4 6.1h2.4L8.5 3v10L4.8 9.9H2.4z" />
+      <path d="M10.7 5.7c.8.7 1.2 1.4 1.2 2.3s-.4 1.7-1.2 2.4M12.6 3.9c1.4 1.1 2.1 2.5 2.1 4.1s-.7 3.1-2.1 4.2" />
+    </Pen>
+  )
+}
+
+export function SoundOffIcon({ size = 15 }: { size?: number }) {
+  return (
+    <Pen size={size}>
+      <path d="M2.4 6.1h2.4L8.5 3v10L4.8 9.9H2.4z" />
+      <path d="M10.9 6.1c1.2 1.2 2.3 2.5 3.5 3.8M14.4 6c-1.2 1.3-2.3 2.6-3.5 3.9" />
+    </Pen>
+  )
+}
+
 /** A sheet with a doodle on it — the shared canvas. */
 export function SheetIcon({ size = 24 }: { size?: number }) {
   return (
