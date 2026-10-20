@@ -8,6 +8,9 @@ import '@fontsource/courier-prime/400.css'
 import '@fontsource/courier-prime/700.css'
 import './index.css'
 import App from './App.tsx'
+import { installSound } from './lib/sound'
+
+installSound()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import gsap from 'gsap'
 import { CloseIcon, CursorIcon, PanIcon, PinIcon, ScrollIcon, TouchIcon } from './icons'
 import { prefersReducedMotion, unfold } from '../lib/motion'
+import { play } from '../lib/sound'
 
 export interface ToolInfo {
   icon: ReactNode
@@ -48,6 +49,7 @@ export function InfoPanel({ open, onClose, tools, full = true }: Props) {
   // Opens like a note folded along its top edge.
   useEffect(() => {
     if (!open || prefersReducedMotion()) return
+    play('rustle')
     const ctx = gsap.context(() => {
       unfold(ref.current)
     }, ref)
@@ -119,10 +121,19 @@ export function InfoPanel({ open, onClose, tools, full = true }: Props) {
             <Row
               chip={<ScrollIcon />}
               label="Scroll wheel"
-              hint="Grows and shrinks the brush, with a true-to-size ring at the cursor."
+              hint={
+                full
+                  ? 'With the pen or eraser, grows and shrinks the brush, with a true-to-size ring at the cursor. With Select, zooms instead.'
+                  : 'Grows and shrinks the brush, with a true-to-size ring at the cursor.'
+              }
             />
             {full && (
               <>
+                <Row
+                  chip={<span className="info-word">+ −</span>}
+                  label="Zoom"
+                  hint="With Select active, scroll, pinch with two fingers, or press + and −. Press 0, or tap the percentage in the corner, to go back to 100%."
+                />
                 <Row
                   chip={<PanIcon />}
                   label="Drag to pan"

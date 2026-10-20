@@ -5,7 +5,9 @@ import { Avatar } from '../components/Avatar'
 import { InkMark } from '../components/InkMark'
 import { Wordmark } from '../components/Wordmark'
 import { BackIcon, CheckIcon } from '../components/icons'
+import { SoundToggle } from '../components/SoundToggle'
 import { GameCanvas } from '../components/GameCanvas'
+import { GameClock } from '../components/GameClock'
 import { LeadTimeline } from '../components/LeadTimeline'
 import { ScoreChart } from '../components/ScoreChart'
 import { Podium } from '../components/Podium'
@@ -15,6 +17,7 @@ import type { GameCanvasHandle, GameOp } from '../components/GameCanvas'
 import { normalizeAvatar } from '../lib/avatar'
 import { prefersReducedMotion } from '../lib/motion'
 import { onPaper } from '../lib/palette'
+import { play } from '../lib/sound'
 import { SERVER_URL } from '../lib/server'
 import type { Message, User } from '../types'
 
@@ -117,14 +120,20 @@ interface Props {
  */
 function useCountdown(endsAt: number) {
   const [left, setLeft] = useState(0)
+  /** What the clock read when this deadline first arrived — the phase's length. */
+  const [span, setSpan] = useState(0)
 
   useEffect(() => {
     if (!endsAt) return
-    const tick = () => setLeft(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)))
+    const secondsLeft = () => Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))
+    const tick = () => setLeft(secondsLeft())
     // The first reading happens on the next frame rather than in the effect
     // body, which keeps the clock out of both the cascading-render rule and the
     // purity rule that forbids reading Date.now() while rendering.
-    const frame = requestAnimationFrame(tick)
+    const frame = requestAnimationFrame(() => {
+      setSpan(secondsLeft())
+      tick()
+    })
     const id = setInterval(tick, 250)
     return () => {
       cancelAnimationFrame(frame)
@@ -132,7 +141,7 @@ function useCountdown(endsAt: number) {
     }
   }, [endsAt])
 
-  return endsAt ? left : 0
+  return endsAt ? { left, span } : { left: 0, span: 0 }
 }
 
 export function ThinkInk({ user, code, onLeave }: Props) {
@@ -156,15 +165,41 @@ export function ThinkInk({ user, code, onLeave }: Props) {
   const isDrawer = Boolean(state?.drawerId && me && state.drawerId === me.id)
   const isHost = Boolean(state?.hostId && me && state.hostId === me.id)
   const hostName = state?.players.find((p) => p.id === state.hostId)?.user.username ?? null
-  const left = useCountdown(state?.endsAt ?? 0)
+  const { left, span } = useCountdown(state?.endsAt ?? 0)
+  // A drawing turn is measured against its full length, so when the first
+  // correct guess cuts the clock the ring visibly drops. Picking and reveal
+  // aren't in the state, so they use the length they started with.
+  const clockTotal = state?.phase === 'drawing' ? state.settings.drawSeconds : span
 
   useEffect(() => {
     const socket = io(SERVER_URL)
     socketRef.current = socket
 
+    // Sounds come from what changed between one state and the next, so the
+    // first state after joining is silent and every push after it is compared.
+    let lastPhase: GamePhase | null = null
+    let lastSolved = 0
+    let iSolved = false
+
     socket.on('connect', () => socket.emit('game_join', { ...user, code }))
     socket.on('game_full', ({ capacity }: { capacity: number }) => setFull(capacity))
-    socket.on('game_state', (g: GameState) => setState(g))
+    socket.on('game_state', (g: GameState) => {
+      setState(g)
+      const mine = g.players.find((p) => p.user.username === user.username)
+      const solved = g.phase === 'drawing' ? g.players.filter((p) => p.guessed).length : 0
+      if (lastPhase !== null) {
+        if (g.phase !== lastPhase) {
+          if (g.phase === 'picking' && mine && g.drawerId === mine.id) play('turn')
+          // A beat late, so it never lands on top of the last guess's run.
+          else if (g.phase === 'reveal') play('stick', { delay: 0.3 })
+          else if (g.phase === 'over') play('win')
+        }
+        if (solved > lastSolved) play(mine?.guessed && !iSolved ? 'solved' : 'correct')
+      }
+      lastPhase = g.phase
+      lastSolved = solved
+      iSolved = g.phase === 'drawing' && Boolean(mine?.guessed)
+    })
     socket.on('game_message', (m: Message) => setMessages((prev) => [...prev, m]))
     socket.on('game_choices', ({ choices: c }: { choices: string[] }) => setChoices(c))
     socket.on('game_word', ({ word }: { word: string }) => setSecret(word))
@@ -173,6 +208,7 @@ export function ThinkInk({ user, code, onLeave }: Props) {
       canvasRef.current?.replay(strokes)
     )
     socket.on('game_clear', () => {
+      play('rustle', { gain: 0.8 })
       canvasRef.current?.clear()
       setChoices(null)
       setSecret(null)
@@ -180,6 +216,7 @@ export function ThinkInk({ user, code, onLeave }: Props) {
     })
     socket.on('game_reveal', ({ word }: { word: string | null }) => setRevealed(word))
     socket.on('game_close', () => {
+      play('close')
       setNearMiss(true)
       setTimeout(() => setNearMiss(false), 1600)
     })
@@ -200,6 +237,7 @@ export function ThinkInk({ user, code, onLeave }: Props) {
 
   useEffect(() => {
     if (!shownLetters || prefersReducedMotion()) return
+    play('tick')
     const ctx = gsap.context(() => {
       gsap.fromTo(
         wordRef.current,
@@ -215,6 +253,12 @@ export function ThinkInk({ user, code, onLeave }: Props) {
     return () => ctx.revert()
   }, [shownLetters])
 
+  // The last five seconds of a turn tick like a woodblock.
+  const phase = state?.phase
+  useEffect(() => {
+    if (phase === 'drawing' && left > 0 && left <= 5) play('clock')
+  }, [left, phase])
+
   const sendOp = useCallback((op: GameOp) => socketRef.current?.emit('game_draw', op), [])
   const clearCanvas = useCallback(() => socketRef.current?.emit('game_clear'), [])
 
@@ -223,6 +267,7 @@ export function ThinkInk({ user, code, onLeave }: Props) {
     if (!body) return
     socketRef.current?.emit('game_guess', { text: body })
     setText('')
+    play('flick')
   }
 
   if (full !== null) {
@@ -276,9 +321,10 @@ export function ThinkInk({ user, code, onLeave }: Props) {
             <span className="game-round">
               Round {state.round}/{state.maxRounds}
             </span>
-            <span className={`game-clock ${left <= 10 ? 'urgent' : ''}`}>{left}s</span>
+            <GameClock left={left} total={clockTotal} />
           </>
         )}
+        <SoundToggle />
       </header>
 
       <div className="game-body">

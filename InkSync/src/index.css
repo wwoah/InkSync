@@ -12,12 +12,15 @@
 ────────────────────────────────────────── */
 
 :root {
-  /* Stock */
+  /* Stock. Two kinds of paper share the desk: cream for the pages you work
+     in — the sketchbook, the notebook, the score sheet, the headers — and
+     bright white card for things that are white in life: index cards, prints,
+     the photo, buttons, and the drawing sheets themselves, so ink reads true. */
   --desk: #e8e0cf;
   --paper: #fbf8f1;
   --paper-warm: #f4eee2;
   --paper-shade: #ebe3d3;
-  --card: #fffdf8;
+  --card: #ffffff;
   --sticky: #fdf0a0;
   --manila: #f1e2bf;
 
@@ -68,6 +71,9 @@
      image. The alpha channel is driven by the noise itself, so it only ever
      darkens — the stock colour underneath never greys out. */
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .27 0 0 0 0 .2 0 0 0 0 .12 .62 0 0 0 -.24'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  /* The grain for white card: finer, sparser and a cool grey. The warm grain
+     at full strength would tint white straight back to off-white. */
+  --grain-fine: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .38 0 0 0 0 .39 0 0 0 0 .42 .5 0 0 0 -.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
   /* Cloudy unevenness for the desk, at a scale too broad to tile visibly. */
   --mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.005' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .38 0 0 0 0 .2 .75 0 0 0 -.32'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
   /* Pencil strokes for dividers. They stretch to fit without thickening. */
@@ -205,10 +211,10 @@ select {
   pointer-events: none;
 }
 
-/* The sheet underneath, knocked askew. */
+/* The sheet underneath, knocked askew: a white sheet under the cream page. */
 .welcome-card::before {
   z-index: -2;
-  background: var(--paper-warm) var(--grain);
+  background: var(--card) var(--grain-fine);
   box-shadow: var(--lift-2);
   rotate: 2.2deg;
   translate: 5px 4px;
@@ -557,7 +563,8 @@ select {
 .collab-ctrl-btn,
 .back-btn,
 .carousel-arrow,
-.avatar-step {
+.avatar-step,
+.sound-toggle {
   position: relative;
   isolation: isolate;
   display: flex;
@@ -575,9 +582,30 @@ select {
 .collab-ctrl-btn:hover,
 .back-btn:hover,
 .carousel-arrow:hover:not(:disabled),
-.avatar-step:hover {
+.avatar-step:hover,
+.sound-toggle:hover {
   color: var(--ink);
   background-color: var(--paper-shade);
+}
+
+.sound-toggle {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+/* Off reads as faded pencil, so the state is clear at a glance. */
+.sound-toggle[aria-pressed='false'] {
+  color: var(--ink-faint);
+}
+
+/* On the welcome card it lines up with the logo, clear of the tape in the
+   corner: the card's top padding plus half the 64px mark, less half itself. */
+.welcome-card > .sound-toggle {
+  position: absolute;
+  top: 62px;
+  right: 32px;
+  z-index: 3;
 }
 
 .tool-btn::before,
@@ -711,7 +739,7 @@ select {
   position: relative;
   isolation: isolate;
   flex: 1;
-  background: var(--paper) var(--grain);
+  background: var(--card) var(--grain-fine);
   display: flex;
   align-items: stretch;
   overflow: hidden;
@@ -734,7 +762,7 @@ select {
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  background: var(--paper) var(--grain);
+  background: var(--card) var(--grain-fine);
   box-shadow: var(--lift-3);
 }
 
@@ -1178,7 +1206,7 @@ select {
   position: relative;
   flex-shrink: 0;
   padding: 8px 8px 14px;
-  background: var(--card) var(--grain);
+  background: var(--card) var(--grain-fine);
   border-radius: 2px;
   box-shadow: var(--lift-2);
   rotate: -2.5deg;
@@ -1379,7 +1407,7 @@ select {
   width: 100%;
   padding: 18px 20px 20px;
   background-color: var(--card);
-  background-image: repeating-linear-gradient(transparent 0 25px, var(--ruled) 25px 26px), var(--grain);
+  background-image: repeating-linear-gradient(transparent 0 25px, var(--ruled) 25px 26px), var(--grain-fine);
   border-radius: 2px;
   box-shadow: var(--lift-1);
   display: flex;
@@ -1428,7 +1456,7 @@ select {
   gap: 12px;
   margin: -18px -20px 0;
   padding: 18px 20px 12px;
-  background: var(--card) var(--grain);
+  background: var(--card) var(--grain-fine);
   border-bottom: 2px solid var(--margin-line);
   border-radius: 2px 2px 0 0;
 }
@@ -1573,14 +1601,16 @@ select {
 
 /* The drawing surface is larger than the viewport and slides under it.
    A faint dot grid, like a bullet-journal page, gives the eye something to
-   track while panning; it is paper, not pixels, so it never reaches a bake. */
+   track while panning; it is paper, not pixels, so it never reaches a bake.
+   It scales from its top-left corner, which is what the zoom maths assumes. */
 .collab-surface {
   position: absolute;
   top: 0;
   left: 0;
+  transform-origin: 0 0;
   will-change: transform;
-  background-color: var(--paper);
-  background-image: radial-gradient(circle, rgba(74, 58, 38, 0.22) 1px, transparent 1.6px), var(--grain);
+  background-color: var(--card);
+  background-image: radial-gradient(circle, rgba(74, 58, 38, 0.22) 1px, transparent 1.6px), var(--grain-fine);
   background-size: 28px 28px, auto;
   box-shadow: 0 0 0 1px rgba(70, 50, 25, 0.12), 0 14px 40px rgba(70, 50, 25, 0.25);
 }
@@ -1593,6 +1623,44 @@ select {
   display: block;
   touch-action: none;
   mix-blend-mode: multiply;
+}
+
+/* The layer of marks over the sheet: sized to the sheet as displayed, but
+   never scaled itself. It lets every pointer through to the canvas; the
+   marks that need the pointer take it back themselves. */
+.collab-marks {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+/* How far in or out — a paper tag in the corner that resets to 100%. */
+.collab-zoom {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 95;
+  padding: 3px 10px;
+  background: var(--paper) var(--grain);
+  border: none;
+  border-radius: 2px;
+  box-shadow: var(--lift-2);
+  color: var(--ink);
+  font-family: var(--type);
+  font-size: 12.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  rotate: -2deg;
+  transition: transform 0.1s;
+}
+
+.collab-zoom:hover {
+  transform: translateY(-1px);
+}
+
+.collab-zoom:active {
+  transform: translateY(1px);
 }
 
 /* Floating toolbar: a strip of card laid across the top of the sheet.
@@ -1615,7 +1683,8 @@ select {
   max-width: calc(100vw - 16px);
   gap: 5px;
   padding: 7px 12px;
-  background: var(--card) var(--grain);
+  /* Cream, so the strip still reads as a separate piece on the white sheet. */
+  background: var(--paper) var(--grain);
   border-radius: 3px;
   box-shadow: var(--lift-2);
   z-index: 100;
@@ -1767,7 +1836,7 @@ select {
       rgba(255, 255, 255, 0.7) calc(33.3% + 1px), transparent calc(33.3% + 2px)),
     linear-gradient(transparent calc(66.6% - 1px), rgba(70, 50, 25, 0.07) calc(66.6% - 1px),
       rgba(255, 255, 255, 0.7) calc(66.6% + 1px), transparent calc(66.6% + 2px)),
-    var(--grain);
+    var(--grain-fine);
   border-radius: 2px;
   box-shadow: var(--lift-3);
   z-index: 111;
@@ -1987,7 +2056,7 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 2px var(--card);
+  box-shadow: 0 0 0 2px var(--paper);
   rotate: 8deg;
   pointer-events: none;
 }
@@ -2253,7 +2322,8 @@ select {
   word-break: break-word;
 }
 
-/* A blank note, waiting to be written on. */
+/* A blank note, waiting to be written on. It sits in the marks layer, which
+   lets the pointer through, so it has to claim it back to be typed in. */
 .pin-input-card {
   position: absolute;
   translate: 12px -50%;
@@ -2262,6 +2332,7 @@ select {
   padding: 12px 12px 14px;
   rotate: 1deg;
   z-index: 40;
+  pointer-events: auto;
 }
 
 .pin-text-input {
@@ -2429,6 +2500,11 @@ button {
     gap: 22px;
   }
 
+  .welcome-card > .sound-toggle {
+    top: 50px;
+    right: 14px;
+  }
+
   .logo-word {
     font-size: 34px;
   }
@@ -2555,23 +2631,67 @@ button {
 }
 
 /* The clock is a stamped circle; under ten seconds it turns red and ticks. */
+/* The turn clock: a white paper disc with a pencil ring that runs down as the
+   time does, and the seconds typed in the middle. A true circle — the box is
+   square, so nothing can stretch it into an ellipse. */
 .game-clock {
-  min-width: 40px;
-  text-align: center;
-  padding: 2px 8px;
-  border: 1.5px solid var(--ink-soft);
-  border-radius: 50% 46% 52% 48% / 52% 50% 48% 50%;
-  font-family: var(--type);
-  font-size: 13px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--card) var(--grain-fine);
+  box-shadow: var(--lift-1);
   color: var(--ink);
 }
 
+.game-clock svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.game-clock path {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+/* The faint pencil circle the time is drawn over. */
+.game-clock-track {
+  stroke: var(--rule);
+}
+
+/* What's left. The ring moves once a second; easing each step over a full
+   second makes it drain smoothly, and refill with a sweep at a new turn. */
+.game-clock-left {
+  stroke: currentColor;
+  stroke-dasharray: 1;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.game-clock-num {
+  position: relative;
+  font-family: var(--type);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.5px;
+}
+
+/* The last ten seconds: red pencil, and a tick you can see. */
 .game-clock.urgent {
   color: var(--red);
-  border-color: var(--red);
   animation: clock-tick 1s ease-in-out infinite;
+}
+
+.game-clock.urgent .game-clock-track {
+  stroke: rgba(196, 67, 47, 0.18);
 }
 
 /* Centred in the bar rather than tucked in a corner — it is the thing every
@@ -2708,7 +2828,7 @@ button {
 .game-sheet {
   position: relative;
   isolation: isolate;
-  background: var(--paper) var(--grain);
+  background: var(--card) var(--grain-fine);
   border-radius: 2px;
   box-shadow: var(--lift-2);
 }
@@ -3126,7 +3246,7 @@ button {
   z-index: 3;
   /* Never steal the pointer from the strip that opened it. */
   pointer-events: none;
-  background: var(--card) var(--grain);
+  background: var(--card) var(--grain-fine);
   border-radius: 2px;
   box-shadow: var(--lift-2);
   padding: 7px 8px;
@@ -3280,7 +3400,7 @@ button {
   flex-direction: column;
   gap: 9px;
   padding: 12px 14px 14px;
-  background: var(--card) var(--grain);
+  background: var(--card) var(--grain-fine);
   border-radius: 2px;
   box-shadow: var(--lift-1);
   text-align: left;
@@ -3566,7 +3686,7 @@ button {
 .game-final-chart {
   width: min(420px, 100%);
   padding: 12px 14px;
-  background: var(--card) var(--grain);
+  background: var(--card) var(--grain-fine);
   border-radius: 2px;
   box-shadow: var(--lift-1);
 }

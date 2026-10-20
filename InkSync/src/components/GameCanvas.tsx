@@ -1,8 +1,10 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { CursorIcon, EraserIcon, FillIcon, PencilIcon } from './icons'
+import { inkCursor } from '../lib/cursors'
 import { floodFill } from '../lib/fill'
 import { isTypingTarget } from '../lib/keys'
 import { INKS } from '../lib/palette'
+import { pencil, play } from '../lib/sound'
 
 export interface GameOp {
   kind?: 'fill'
@@ -117,11 +119,13 @@ export const GameCanvas = forwardRef<GameCanvasHandle, Props>(function GameCanva
       if (tool === 'fill') {
         const ctx = ctxOf()
         if (!ctx || !floodFill(ctx, pos.x, pos.y, color)) return
+        play('pour')
         onOp({ kind: 'fill', x: pos.x, y: pos.y, color })
         return
       }
       drawing.current = true
       last.current = pos
+      pencil.start(tool, e)
     }
 
     const move = (e: MouseEvent | TouchEvent) => {
@@ -139,9 +143,11 @@ export const GameCanvas = forwardRef<GameCanvasHandle, Props>(function GameCanva
       paint(op)
       onOp(op)
       last.current = pos
+      pencil.move(e)
     }
 
     const up = () => {
+      if (drawing.current) pencil.end()
       drawing.current = false
     }
 
@@ -160,6 +166,9 @@ export const GameCanvas = forwardRef<GameCanvasHandle, Props>(function GameCanva
       window.removeEventListener('touchmove', move as EventListener)
       window.removeEventListener('touchend', up)
       window.removeEventListener('blur', up)
+      // The turn can end mid-stroke, taking the pen away before the button
+      // comes up — so the scratch must not be left running.
+      pencil.end()
     }
   }, [canDraw, color, size, tool, onOp, paint])
 
@@ -189,7 +198,7 @@ export const GameCanvas = forwardRef<GameCanvasHandle, Props>(function GameCanva
           width={W}
           height={H}
           className="game-canvas"
-          style={{ cursor: canDraw ? 'crosshair' : 'default' }}
+          style={{ cursor: inkCursor(canDraw ? tool : 'select', color) }}
         />
         <span className="tape tape-left" aria-hidden="true" />
         <span className="tape tape-right" aria-hidden="true" />

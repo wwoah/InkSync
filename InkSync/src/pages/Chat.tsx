@@ -4,8 +4,10 @@ import { io, Socket } from 'socket.io-client'
 import { DrawingCanvas } from '../components/DrawingCanvas'
 import { ChatFeed } from '../components/ChatFeed'
 import { BackIcon } from '../components/icons'
+import { SoundToggle } from '../components/SoundToggle'
 import { prefersReducedMotion } from '../lib/motion'
 import { onPaper } from '../lib/palette'
+import { play } from '../lib/sound'
 import { SERVER_URL } from '../lib/server'
 import type { User, Message } from '../types'
 
@@ -24,8 +26,9 @@ export function Chat({ user, roomId, onLeave }: Props) {
 
   useEffect(() => {
     if (prefersReducedMotion()) return
+    play('rustle', { delay: 0.15 })
     const ctx = gsap.context(() => {
-      const rise = { y: 0, opacity: 1, duration: 0.45, ease: 'power3.out', clearProps: 'opacity,transform' }
+      const rise ={ y: 0, opacity: 1, duration: 0.45, ease: 'power3.out', clearProps: 'opacity,transform' }
       gsap
         .timeline()
         .fromTo('.chat-header', { y: -52, opacity: 0 }, rise)
@@ -49,6 +52,8 @@ export function Chat({ user, roomId, onLeave }: Props) {
 
     socket.on('message', (msg: Message) => {
       setMessages((prev) => [...prev, msg])
+      // Your own messages already made their sound as they left.
+      if (msg.user && msg.user.username !== user.username) play('note')
     })
 
     socket.on('room_user_count', (count: number) => {
@@ -65,6 +70,7 @@ export function Chat({ user, roomId, onLeave }: Props) {
     if (!trimmed) return
     socketRef.current?.emit('send_message', { type: 'text', content: trimmed })
     setText('')
+    play('flick')
   }
 
   const sendDrawing = (dataUrl: string) => {
@@ -82,6 +88,7 @@ export function Chat({ user, roomId, onLeave }: Props) {
           <span className="header-room">/ {roomId}</span>
         </div>
         <div className="header-right">
+          <SoundToggle />
           <span className="header-user" style={{ color: onPaper(user.color) }}>
             {user.username}
           </span>
